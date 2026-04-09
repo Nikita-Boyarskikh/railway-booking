@@ -3,8 +3,8 @@ import type { Station } from '../types';
 
 interface Props {
   stations: Station[];
-  value: number | null;
-  onChange: (id: number | null) => void;
+  value: string | null;
+  onChange: (code: string | null) => void;
   placeholder: string;
 }
 
@@ -15,7 +15,7 @@ export default function StationAutocomplete({
   const [open, setOpen] = useState(false);
 
   const selected = useMemo(
-    () => stations.find((s) => s.id === value) ?? null,
+    () => stations.find((s) => s.code === value) ?? null,
     [stations, value],
   );
 
@@ -45,12 +45,12 @@ export default function StationAutocomplete({
       {open && filtered.length > 0 && (
         <ul className="absolute z-10 bg-white border border-gray-300 w-full mt-1 rounded shadow max-h-60 overflow-y-auto">
           {filtered.map((s) => (
-            <li key={s.id}>
+            <li key={s.code}>
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 hover:bg-blue-50"
                 onMouseDown={() => {
-                  onChange(s.id);
+                  onChange(s.code);
                   setQuery('');
                   setOpen(false);
                 }}

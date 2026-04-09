@@ -13,14 +13,18 @@ class OrderCreateView(APIView):
         data = request.data
         try:
             order = create_order(
-                departure_id=int(data["departure_id"]),
-                station_from_id=int(data["station_from_id"]),
-                station_to_id=int(data["station_to_id"]),
+                departure_uuid=data["departure_uuid"],
+                station_from_code=data["station_from_code"],
+                station_to_code=data["station_to_code"],
                 items=data["items"],
             )
         except SeatUnavailableError as e:
             return Response(
-                {"detail": str(e), "seat_id": e.seat_id},
+                {
+                    "detail": str(e),
+                    "car_number": e.car_number,
+                    "seat_number": e.seat_number,
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         except (InvalidRequestError, KeyError, ValueError, TypeError) as e:
@@ -31,3 +35,5 @@ class OrderCreateView(APIView):
 class OrderDetailView(RetrieveAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    lookup_field = "uuid"
+    lookup_url_kwarg = "uuid"

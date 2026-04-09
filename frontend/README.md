@@ -40,8 +40,8 @@ State is local + URL params; data is fetched per page. No global store.
 | Route | Component | Params | Description |
 |---|---|---|---|
 | `/` | `SearchPage` | — | Pick station from/to + date, search departures |
-| `/departures/:id/seats` | `SeatsPage` | path: `id` (departure); query: `from`, `to` (station ids) | Pick seats for the chosen segment, fill passenger data |
-| `/orders/:id` | `ConfirmationPage` | path: `id` (order); router state: created `order` | Confirmation screen with booking details |
+| `/departures/:id/seats` | `SeatsPage` | path: `id` (departure **uuid**); query: `from`, `to` (station **codes**) | Pick seats for the chosen segment, fill passenger data |
+| `/orders/:id` | `ConfirmationPage` | path: `id` (order **uuid**); router state: created `order` | Confirmation screen with booking details |
 
 ## Setup (local)
 

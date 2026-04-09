@@ -190,18 +190,27 @@ Concurrency: use `select_for_update` within `transaction.atomic` when creating b
 
 ## User Scenarios
 
+### Public identifiers
+
+The HTTP API never exposes internal integer primary keys. Public identifiers are:
+
+- **Stations** — by `code` (e.g. `MOW`, `SOC`)
+- **Departures** — by `uuid`
+- **Orders** — by `uuid`
+- **Cars / Seats** — by `(car_number, seat_number)` scoped to a train
+
 ### 1. Search Departures
 
 - User selects: station from (autocomplete on frontend, full list from API), station to, date
-- `GET /api/stations/` — returns all stations
-- `GET /api/departures/?from={id}&to={id}&date={YYYY-MM-DD}`
-- Response per departure: train number/name, departure time at station A, arrival time at station B, travel duration, free seat count, minimum price
+- `GET /api/stations/` — returns all stations as `[{name, code}]`
+- `GET /api/departures/?from={code}&to={code}&date={YYYY-MM-DD}`
+- Response per departure: `uuid`, train number/name, departure time at station A, arrival time at station B, free seat count, minimum price
 
 ### 2. View Seats
 
 - User clicks "Select" on a departure
-- `GET /api/departures/{id}/seats/?from={station_id}&to={station_id}`
-- Response: seats grouped by car, each seat with: number, type, status (free/occupied), price
+- `GET /api/departures/{uuid}/seats/?from={code}&to={code}`
+- Response: seats grouped by car. Each car has `number`, `car_type`, `features`, `seats[]`. Each seat has `number`, `seat_type`, `status` (free/occupied), `price`
 - User selects one or more seats
 
 ### 3. Book
@@ -211,17 +220,24 @@ Concurrency: use `select_for_update` within `transaction.atomic` when creating b
 - Request body:
   ```json
   {
-    "departure_id": 1,
-    "station_from_id": 1,
-    "station_to_id": 5,
+    "departure_uuid": "9d6e6f8a-…",
+    "station_from_code": "MOW",
+    "station_to_code": "SOC",
     "items": [
-      {"seat_id": 42, "passenger_name": "John Doe", "passenger_passport": "1234567890", "passenger_gender": "male", "passenger_birth_date": "1990-01-15"}
+      {
+        "car_number": 2,
+        "seat_number": 17,
+        "passenger_name": "John Doe",
+        "passenger_passport": "1234567890",
+        "passenger_gender": "male",
+        "passenger_birth_date": "1990-01-15"
+      }
     ]
   }
   ```
 - System validates seat availability within a transaction
-- Response: order ID, booking details, total price
-- On conflict: error response, user sees "seat no longer available"
+- Response: `{uuid, created_at, total_price, features, bookings[]}` — bookings carry `departure_uuid`, `car_number`, `seat_number`, `station_from_code`, `station_to_code`, `passenger`
+- On conflict (409): `{detail, car_number, seat_number}` — user sees "seat no longer available"
 
 ## Tech Stack
 
@@ -276,7 +292,8 @@ railway-booking/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stations/` | List all stations |
-| GET | `/api/departures/?from=&to=&date=` | Search departures |
-| GET | `/api/departures/{id}/seats/?from=&to=` | Seats grouped by car |
+| GET | `/api/stations/` | List all stations (`[{name, code}]`) |
+| GET | `/api/departures/?from={code}&to={code}&date=` | Search departures |
+| GET | `/api/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
 | POST | `/api/orders/` | Create order with bookings |
+| GET | `/api/orders/{uuid}/` | Retrieve an order |

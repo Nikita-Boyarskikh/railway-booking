@@ -14,26 +14,30 @@ def test_full_flow(demo_data):
     assert len(r.json()) == 4
 
     # search departures
-    r = client.get(f"/api/departures/?from={s[0].id}&to={s[3].id}&date=2026-05-01")
+    r = client.get(f"/api/departures/?from={s[0].code}&to={s[3].code}&date=2026-05-01")
     assert r.status_code == 200
     deps = r.json()
     assert len(deps) == 1
     assert deps[0]["free_seat_count"] == 2
+    assert deps[0]["uuid"] == str(d["departure"].uuid)
 
     # seats
-    r = client.get(f"/api/departures/{d['departure'].id}/seats/?from={s[0].id}&to={s[3].id}")
+    r = client.get(
+        f"/api/departures/{d['departure'].uuid}/seats/?from={s[0].code}&to={s[3].code}"
+    )
     assert r.status_code == 200
     cars = r.json()["cars"]
     assert len(cars) == 1
 
     # create order
     payload = {
-        "departure_id": d["departure"].id,
-        "station_from_id": s[0].id,
-        "station_to_id": s[3].id,
+        "departure_uuid": str(d["departure"].uuid),
+        "station_from_code": s[0].code,
+        "station_to_code": s[3].code,
         "items": [
             {
-                "seat_id": d["seat"].id,
+                "car_number": d["car"].number,
+                "seat_number": d["seat"].number,
                 "passenger_name": "Jane",
                 "passenger_passport": "X1",
                 "passenger_gender": "female",

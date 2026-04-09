@@ -1,11 +1,10 @@
 export interface Station {
-  id: number;
   name: string;
   code: string;
 }
 
 export interface DepartureSummary {
-  departure_id: number;
+  uuid: string;
   train_number: string;
   train_name: string;
   departure_time: string | null;
@@ -15,7 +14,6 @@ export interface DepartureSummary {
 }
 
 export interface Seat {
-  id: number;
   number: number;
   seat_type: string;
   status: 'free' | 'occupied';
@@ -23,7 +21,6 @@ export interface Seat {
 }
 
 export interface Car {
-  id: number;
   number: number;
   car_type: string;
   features: Record<string, unknown>;
@@ -35,7 +32,8 @@ export interface SeatsResponse {
 }
 
 export interface OrderItem {
-  seat_id: number;
+  car_number: number;
+  seat_number: number;
   passenger_name: string;
   passenger_passport: string;
   passenger_gender: 'male' | 'female';
@@ -43,20 +41,19 @@ export interface OrderItem {
 }
 
 export interface OrderRequest {
-  departure_id: number;
-  station_from_id: number;
-  station_to_id: number;
+  departure_uuid: string;
+  station_from_code: string;
+  station_to_code: string;
   items: OrderItem[];
 }
 
 export interface BookingResponse {
-  id: number;
-  departure: number;
-  seat: number;
-  station_from: number;
-  station_to: number;
+  departure_uuid: string;
+  car_number: number;
+  seat_number: number;
+  station_from_code: string;
+  station_to_code: string;
   passenger: {
-    id: number;
     name: string;
     passport_number: string;
     gender: string;
@@ -65,7 +62,7 @@ export interface BookingResponse {
 }
 
 export interface OrderResponse {
-  id: number;
+  uuid: string;
   created_at: string;
   total_price: string;
   features: Record<string, unknown>;

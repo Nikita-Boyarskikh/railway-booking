@@ -4,11 +4,26 @@ from decimal import Decimal
 from apps.core.availability import free_seat_ids
 from apps.core.pricing import calc_booking_price
 from apps.core.timetable import compute_timetable, find_route_orders
+from apps.stations.models import Station
 
 from .models import Departure
 
 
-def search_departures(from_id: int, to_id: int, on_date: date_cls) -> list[dict]:
+def _resolve_codes(from_code: str, to_code: str) -> tuple[int, int] | None:
+    stations = {s.code: s for s in Station.objects.filter(code__in=[from_code, to_code])}
+    f = stations.get(from_code)
+    t = stations.get(to_code)
+    if not f or not t:
+        return None
+    return f.id, t.id
+
+
+def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
+    resolved = _resolve_codes(from_code, to_code)
+    if not resolved:
+        return []
+    from_id, to_id = resolved
+
     results: list[dict] = []
     qs = Departure.objects.filter(date=on_date).select_related("train__route")
     for dep in qs:
@@ -19,7 +34,6 @@ def search_departures(from_id: int, to_id: int, on_date: date_cls) -> list[dict]
         from_order, to_order = rng
 
         timetable = compute_timetable(dep)
-        # find stop entries for from/to stations
         dep_at_a = next(
             (s["departure_time"] for s in timetable if s["station_id"] == from_id), None
         )
@@ -28,7 +42,6 @@ def search_departures(from_id: int, to_id: int, on_date: date_cls) -> list[dict]
         free_ids = free_seat_ids(dep, from_order, to_order)
         free_count = len(free_ids)
 
-        # Compute min price across all seats (factors vary per car/seat)
         min_price: Decimal | None = None
         from .models import Seat as SeatModel
 
@@ -40,7 +53,7 @@ def search_departures(from_id: int, to_id: int, on_date: date_cls) -> list[dict]
 
         results.append(
             {
-                "departure_id": dep.id,
+                "uuid": str(dep.uuid),
                 "train_number": dep.train.number,
                 "train_name": dep.train.name,
                 "departure_time": dep_at_a,
@@ -52,7 +65,12 @@ def search_departures(from_id: int, to_id: int, on_date: date_cls) -> list[dict]
     return results
 
 
-def list_seats(departure: Departure, from_id: int, to_id: int) -> dict:
+def list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
+    resolved = _resolve_codes(from_code, to_code)
+    if not resolved:
+        return {"cars": []}
+    from_id, to_id = resolved
+
     route = departure.train.route
     rng = find_route_orders(route, from_id, to_id)
     if not rng:
@@ -68,7 +86,6 @@ def list_seats(departure: Departure, from_id: int, to_id: int) -> dict:
             price = calc_booking_price(route, departure.train, car, seat, from_order, to_order)
             seats_out.append(
                 {
-                    "id": seat.id,
                     "number": seat.number,
                     "seat_type": seat.seat_type,
                     "status": "free" if seat.id in free_ids else "occupied",
@@ -77,7 +94,6 @@ def list_seats(departure: Departure, from_id: int, to_id: int) -> dict:
             )
         cars_out.append(
             {
-                "id": car.id,
                 "number": car.number,
                 "car_type": car.car_type,
                 "features": car.features,

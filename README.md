@@ -51,18 +51,20 @@ The frontend build needs no env vars; the dev override sets `VITE_API_PROXY=http
 | Route | Params | Description |
 |---|---|---|
 | `/` | — | Search: pick station from/to + date, list departures |
-| `/departures/:id/seats` | path: `id`; query: `from`, `to` (station ids) | Pick seats for the chosen segment, fill passenger data |
-| `/orders/:id` | path: `id` | Booking confirmation |
+| `/departures/:id/seats` | path: `id` (departure uuid); query: `from`, `to` (station codes) | Pick seats for the chosen segment, fill passenger data |
+| `/orders/:id` | path: `id` (order uuid) | Booking confirmation |
 
 ## API endpoints
 
+The API exposes public identifiers only — stations by `code`, departures and orders by `uuid`, seats by `(car_number, seat_number)`. Internal integer PKs are never returned.
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stations/` | List all stations |
-| GET | `/api/departures/?from=&to=&date=` | Search departures |
-| GET | `/api/departures/{id}/seats/?from=&to=` | Seats grouped by car |
-| POST | `/api/orders/` | Create order with bookings |
-| GET | `/api/orders/{id}/` | Retrieve an order |
+| GET | `/api/stations/` | List all stations as `[{name, code}]` |
+| GET | `/api/departures/?from={code}&to={code}&date=` | Search departures |
+| GET | `/api/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
+| POST | `/api/orders/` | Create order with bookings (see backend README for payload) |
+| GET | `/api/orders/{uuid}/` | Retrieve an order |
 
 ## Tests
 

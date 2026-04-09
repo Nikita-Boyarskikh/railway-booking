@@ -6,20 +6,25 @@ from .models import Booking, Order, Passenger
 class PassengerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Passenger
-        fields = ["id", "name", "passport_number", "gender", "birth_date"]
+        fields = ["name", "passport_number", "gender", "birth_date"]
 
 
 class BookingSerializer(serializers.ModelSerializer):
     passenger = PassengerSerializer(read_only=True)
+    departure_uuid = serializers.UUIDField(source="departure.uuid", read_only=True)
+    car_number = serializers.IntegerField(source="seat.car.number", read_only=True)
+    seat_number = serializers.IntegerField(source="seat.number", read_only=True)
+    station_from_code = serializers.CharField(source="station_from.code", read_only=True)
+    station_to_code = serializers.CharField(source="station_to.code", read_only=True)
 
     class Meta:
         model = Booking
         fields = [
-            "id",
-            "departure",
-            "seat",
-            "station_from",
-            "station_to",
+            "departure_uuid",
+            "car_number",
+            "seat_number",
+            "station_from_code",
+            "station_to_code",
             "passenger",
         ]
 
@@ -29,4 +34,4 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "created_at", "total_price", "features", "bookings"]
+        fields = ["uuid", "created_at", "total_price", "features", "bookings"]

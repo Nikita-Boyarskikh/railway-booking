@@ -7,8 +7,8 @@ import type { DepartureSummary, Station } from '../types';
 export default function SearchPage() {
   const navigate = useNavigate();
   const [stations, setStations] = useState<Station[]>([]);
-  const [from, setFrom] = useState<number | null>(null);
-  const [to, setTo] = useState<number | null>(null);
+  const [from, setFrom] = useState<string | null>(null);
+  const [to, setTo] = useState<string | null>(null);
   const [date, setDate] = useState('');
   const [results, setResults] = useState<DepartureSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,8 +22,8 @@ export default function SearchPage() {
   const requestIdRef = useRef(0);
 
   const runSearch = (
-    nextFrom: number | null,
-    nextTo: number | null,
+    nextFrom: string | null,
+    nextTo: string | null,
     nextDate: string,
   ) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -50,11 +50,11 @@ export default function SearchPage() {
     }, 300);
   };
 
-  const onFromChange = (v: number | null) => {
+  const onFromChange = (v: string | null) => {
     setFrom(v);
     runSearch(v, to, date);
   };
-  const onToChange = (v: number | null) => {
+  const onToChange = (v: string | null) => {
     setTo(v);
     runSearch(from, v, date);
   };
@@ -64,9 +64,9 @@ export default function SearchPage() {
   };
 
   const onSelect = (dep: DepartureSummary) => {
-    const fromStation = stations.find((s) => s.id === from) ?? null;
-    const toStation = stations.find((s) => s.id === to) ?? null;
-    navigate(`/departures/${dep.departure_id}/seats?from=${from}&to=${to}`, {
+    const fromStation = stations.find((s) => s.code === from) ?? null;
+    const toStation = stations.find((s) => s.code === to) ?? null;
+    navigate(`/departures/${dep.uuid}/seats?from=${from}&to=${to}`, {
       state: { departure: dep, date, fromStation, toStation },
     });
   };
@@ -116,7 +116,7 @@ export default function SearchPage() {
           </thead>
           <tbody>
             {results.map((d) => (
-              <tr key={d.departure_id} className="border-t">
+              <tr key={d.uuid} className="border-t">
                 <td className="px-4 py-2">
                   {d.train_number}
                   {' '}

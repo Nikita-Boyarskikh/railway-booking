@@ -12,13 +12,15 @@ class DepartureSearchView(APIView):
         query = DepartureSearchQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
-        return Response(search_departures(data["from_id"], data["to_id"], data["date"]))
+        return Response(search_departures(data["from_code"], data["to_code"], data["date"]))
 
 
 class DepartureSeatsView(APIView):
-    def get(self, request, pk: int):
+    def get(self, request, uuid):
         query = SeatsQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
-        departure = get_object_or_404(Departure.objects.select_related("train__route"), pk=pk)
-        return Response(list_seats(departure, data["from_id"], data["to_id"]))
+        departure = get_object_or_404(
+            Departure.objects.select_related("train__route"), uuid=uuid
+        )
+        return Response(list_seats(departure, data["from_code"], data["to_code"]))

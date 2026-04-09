@@ -18,11 +18,11 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const getStations = () => http<Station[]>('/api/stations/');
 
-export const searchDepartures = (from: number, to: number, date: string) =>
+export const searchDepartures = (from: string, to: string, date: string) =>
   http<DepartureSummary[]>(`/api/departures/?from=${from}&to=${to}&date=${date}`);
 
-export const getDepartureSeats = (id: number, from: number, to: number) =>
-  http<SeatsResponse>(`/api/departures/${id}/seats/?from=${from}&to=${to}`);
+export const getDepartureSeats = (uuid: string, from: string, to: string) =>
+  http<SeatsResponse>(`/api/departures/${uuid}/seats/?from=${from}&to=${to}`);
 
 export const createOrder = (payload: OrderRequest) =>
   http<OrderResponse>('/api/orders/', {
@@ -30,4 +30,4 @@ export const createOrder = (payload: OrderRequest) =>
     body: JSON.stringify(payload),
   });
 
-export const getOrder = (id: number) => http<OrderResponse>(`/api/orders/${id}/`);
+export const getOrder = (uuid: string) => http<OrderResponse>(`/api/orders/${uuid}/`);

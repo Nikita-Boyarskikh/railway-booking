@@ -5,15 +5,19 @@ from django.db import transaction
 from apps.core.availability import seat_is_free
 from apps.core.pricing import calc_booking_price
 from apps.core.timetable import find_route_orders
+from apps.stations.models import Station
 from apps.trains.models import Departure, Seat
 
 from .models import Booking, Order, Passenger
 
 
 class SeatUnavailableError(Exception):
-    def __init__(self, seat_id: int):
-        super().__init__(f"Seat {seat_id} no longer available")
-        self.seat_id = seat_id
+    def __init__(self, car_number: int, seat_number: int):
+        super().__init__(
+            f"Seat car={car_number} seat={seat_number} no longer available"
+        )
+        self.car_number = car_number
+        self.seat_number = seat_number
 
 
 class InvalidRequestError(Exception):
@@ -22,41 +26,67 @@ class InvalidRequestError(Exception):
 
 @transaction.atomic
 def create_order(
-    departure_id: int,
-    station_from_id: int,
-    station_to_id: int,
+    departure_uuid,
+    station_from_code: str,
+    station_to_code: str,
     items: list[dict],
 ) -> Order:
     if not items:
         raise InvalidRequestError("items must not be empty")
+    if station_from_code == station_to_code:
+        raise InvalidRequestError("station_from and station_to must differ")
 
     try:
-        departure = Departure.objects.select_related("train__route").get(pk=departure_id)
-    except Departure.DoesNotExist as e:
+        departure = Departure.objects.select_related("train__route").get(uuid=departure_uuid)
+    except (Departure.DoesNotExist, ValueError) as e:
         raise InvalidRequestError("Departure not found") from e
 
+    stations = {
+        s.code: s
+        for s in Station.objects.filter(code__in=[station_from_code, station_to_code])
+    }
+    station_from = stations.get(station_from_code)
+    station_to = stations.get(station_to_code)
+    if not station_from or not station_to:
+        raise InvalidRequestError("Unknown station code")
+
     route = departure.train.route
-    rng = find_route_orders(route, station_from_id, station_to_id)
+    rng = find_route_orders(route, station_from.id, station_to.id)
     if not rng:
-        raise InvalidRequestError("Route does not cover from→to")
+        raise InvalidRequestError(
+            "Route does not cover the requested station_from → station_to segment"
+        )
     from_order, to_order = rng
+    if to_order <= from_order:
+        raise InvalidRequestError("station_to must come after station_from along the route")
 
     order = Order.objects.create(total_price=Decimal("0"))
     total = Decimal("0")
 
     for item in items:
-        seat_id = item["seat_id"]
-        # lock seat row to serialize concurrent bookings on same seat
         try:
-            seat = Seat.objects.select_for_update().select_related("car__train").get(pk=seat_id)
+            car_number = int(item["car_number"])
+            seat_number = int(item["seat_number"])
+        except (KeyError, TypeError, ValueError) as e:
+            raise InvalidRequestError("Each item requires car_number and seat_number") from e
+
+        try:
+            seat = (
+                Seat.objects.select_for_update()
+                .select_related("car__train")
+                .get(
+                    car__train=departure.train,
+                    car__number=car_number,
+                    number=seat_number,
+                )
+            )
         except Seat.DoesNotExist as e:
-            raise InvalidRequestError(f"Seat {seat_id} not found") from e
+            raise InvalidRequestError(
+                f"Seat car={car_number} seat={seat_number} not found on this train"
+            ) from e
 
-        if seat.car.train_id != departure.train_id:
-            raise InvalidRequestError(f"Seat {seat_id} does not belong to this train")
-
-        if not seat_is_free(departure, seat_id, from_order, to_order):
-            raise SeatUnavailableError(seat_id)
+        if not seat_is_free(departure, seat.id, from_order, to_order):
+            raise SeatUnavailableError(car_number, seat_number)
 
         passenger = Passenger.objects.create(
             name=item["passenger_name"],
@@ -69,8 +99,8 @@ def create_order(
             order=order,
             departure=departure,
             seat=seat,
-            station_from_id=station_from_id,
-            station_to_id=station_to_id,
+            station_from=station_from,
+            station_to=station_to,
             passenger=passenger,
         )
 
