@@ -1,0 +1,68 @@
+services:
+  db:
+    ports:
+      - "8888:5432"
+
+  backend:
+    entrypoint: ./entrypoint.sh
+    environment:
+      DJANGO_DEBUG: 1
+    develop:
+      watch:
+        - action: sync
+          initial_sync: true
+          path: ./backend
+          target: /app
+          ignore:
+            - .venv
+            - uv.lock
+            - pyproject.toml
+        - action: rebuild
+          initial_sync: true
+          path: ./backend/uv.lock
+        - action: rebuild
+          initial_sync: true
+          path: ./backend/.venv
+        - action: rebuild
+          initial_sync: true
+          path: ./backend/pyproject.toml
+
+  frontend:
+    image: oven/bun:1-alpine
+    build: !reset null
+    working_dir: /app
+    command: sh -c "bun install && bun run dev --host 0.0.0.0 --port 80"
+    environment:
+      VITE_API_PROXY: http://backend:8000
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          initial_sync: true
+          target: /app
+          ignore:
+            - node_modules/
+            - package.json
+            - bun.lock
+            - vite.config.ts
+            - tsconfig.json
+        - action: sync+restart
+          initial_sync: true
+          path: ./frontend/node_modules
+          target: /app/node_modules
+        - action: sync+restart
+          initial_sync: true
+          path: ./frontend/package.json
+          target: /app/package.json
+        - action: sync+restart
+          initial_sync: true
+          path: ./frontend/bun.lock
+          target: /app/bun.lock
+        - action: sync+restart
+          initial_sync: true
+          path: ./frontend/vite.config.ts
+          target: /app/vite.config.ts
+        - action: sync+restart
+          initial_sync: true
+          path: ./frontend/tsconfig.json
+          target: /app/tsconfig.json

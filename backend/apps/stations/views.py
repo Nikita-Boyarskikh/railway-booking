@@ -1,0 +1,9 @@
+from rest_framework import generics
+
+from .models import Station
+from .serializers import StationSerializer
+
+
+class StationListView(generics.ListAPIView):
+    queryset = Station.objects.all().order_by("name")
+    serializer_class = StationSerializer

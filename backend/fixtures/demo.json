@@ -1,0 +1,119 @@
+[
+  {"model": "core.config", "pk": 1, "fields": {"base_price": "100.00"}},
+
+  {"model": "stations.station", "pk": 1,  "fields": {"name": "Moscow",            "code": "MOW"}},
+  {"model": "stations.station", "pk": 2,  "fields": {"name": "Tula",              "code": "TUL"}},
+  {"model": "stations.station", "pk": 3,  "fields": {"name": "Voronezh",          "code": "VOR"}},
+  {"model": "stations.station", "pk": 4,  "fields": {"name": "Rostov-on-Don",     "code": "ROV"}},
+  {"model": "stations.station", "pk": 5,  "fields": {"name": "Sochi",             "code": "SOC"}},
+  {"model": "stations.station", "pk": 6,  "fields": {"name": "Saint Petersburg",  "code": "LED"}},
+  {"model": "stations.station", "pk": 7,  "fields": {"name": "Tver",              "code": "TVR"}},
+  {"model": "stations.station", "pk": 8,  "fields": {"name": "Nizhny Novgorod",   "code": "NIZ"}},
+  {"model": "stations.station", "pk": 9,  "fields": {"name": "Kazan",             "code": "KAZ"}},
+  {"model": "stations.station", "pk": 10, "fields": {"name": "Krasnodar",         "code": "KRR"}},
+
+  {"model": "stations.segment", "pk": 1,  "fields": {"station_from": 1,  "station_to": 2,  "distance_km": "180.00", "base_price": "300.00"}},
+  {"model": "stations.segment", "pk": 2,  "fields": {"station_from": 2,  "station_to": 3,  "distance_km": "350.00", "base_price": "550.00"}},
+  {"model": "stations.segment", "pk": 3,  "fields": {"station_from": 3,  "station_to": 4,  "distance_km": "550.00", "base_price": "850.00"}},
+  {"model": "stations.segment", "pk": 4,  "fields": {"station_from": 4,  "station_to": 5,  "distance_km": "480.00", "base_price": "750.00"}},
+  {"model": "stations.segment", "pk": 5,  "fields": {"station_from": 6,  "station_to": 7,  "distance_km": "480.00", "base_price": "700.00"}},
+  {"model": "stations.segment", "pk": 6,  "fields": {"station_from": 7,  "station_to": 1,  "distance_km": "170.00", "base_price": "280.00"}},
+  {"model": "stations.segment", "pk": 7,  "fields": {"station_from": 1,  "station_to": 8,  "distance_km": "420.00", "base_price": "650.00"}},
+  {"model": "stations.segment", "pk": 8,  "fields": {"station_from": 8,  "station_to": 9,  "distance_km": "390.00", "base_price": "600.00"}},
+  {"model": "stations.segment", "pk": 9,  "fields": {"station_from": 4,  "station_to": 10, "distance_km": "270.00", "base_price": "450.00"}},
+
+  {"model": "routes.route", "pk": 1, "fields": {"name": "Moscow — Sochi",            "price_factor": "1.000", "features": {}}},
+  {"model": "routes.route", "pk": 2, "fields": {"name": "Saint Petersburg — Sochi",  "price_factor": "1.050", "features": {}}},
+  {"model": "routes.route", "pk": 3, "fields": {"name": "Moscow — Kazan",            "price_factor": "1.000", "features": {}}},
+  {"model": "routes.route", "pk": 4, "fields": {"name": "Saint Petersburg — Moscow", "price_factor": "1.100", "features": {}}},
+  {"model": "routes.route", "pk": 5, "fields": {"name": "Moscow — Krasnodar",        "price_factor": "1.000", "features": {}}},
+
+  {"model": "routes.routesegment", "pk": 1,  "fields": {"route": 1, "segment": 1, "order": 0, "stop_duration": "00:10:00"}},
+  {"model": "routes.routesegment", "pk": 2,  "fields": {"route": 1, "segment": 2, "order": 1, "stop_duration": "00:15:00"}},
+  {"model": "routes.routesegment", "pk": 3,  "fields": {"route": 1, "segment": 3, "order": 2, "stop_duration": "00:20:00"}},
+  {"model": "routes.routesegment", "pk": 4,  "fields": {"route": 1, "segment": 4, "order": 3, "stop_duration": "00:00:00"}},
+
+  {"model": "routes.routesegment", "pk": 5,  "fields": {"route": 2, "segment": 5, "order": 0, "stop_duration": "00:05:00"}},
+  {"model": "routes.routesegment", "pk": 6,  "fields": {"route": 2, "segment": 6, "order": 1, "stop_duration": "00:25:00"}},
+  {"model": "routes.routesegment", "pk": 7,  "fields": {"route": 2, "segment": 1, "order": 2, "stop_duration": "00:10:00"}},
+  {"model": "routes.routesegment", "pk": 8,  "fields": {"route": 2, "segment": 2, "order": 3, "stop_duration": "00:15:00"}},
+  {"model": "routes.routesegment", "pk": 9,  "fields": {"route": 2, "segment": 3, "order": 4, "stop_duration": "00:20:00"}},
+  {"model": "routes.routesegment", "pk": 10, "fields": {"route": 2, "segment": 4, "order": 5, "stop_duration": "00:00:00"}},
+
+  {"model": "routes.routesegment", "pk": 11, "fields": {"route": 3, "segment": 7, "order": 0, "stop_duration": "00:15:00"}},
+  {"model": "routes.routesegment", "pk": 12, "fields": {"route": 3, "segment": 8, "order": 1, "stop_duration": "00:00:00"}},
+
+  {"model": "routes.routesegment", "pk": 13, "fields": {"route": 4, "segment": 5, "order": 0, "stop_duration": "00:05:00"}},
+  {"model": "routes.routesegment", "pk": 14, "fields": {"route": 4, "segment": 6, "order": 1, "stop_duration": "00:00:00"}},
+
+  {"model": "routes.routesegment", "pk": 15, "fields": {"route": 5, "segment": 1, "order": 0, "stop_duration": "00:10:00"}},
+  {"model": "routes.routesegment", "pk": 16, "fields": {"route": 5, "segment": 2, "order": 1, "stop_duration": "00:15:00"}},
+  {"model": "routes.routesegment", "pk": 17, "fields": {"route": 5, "segment": 3, "order": 2, "stop_duration": "00:20:00"}},
+  {"model": "routes.routesegment", "pk": 18, "fields": {"route": 5, "segment": 9, "order": 3, "stop_duration": "00:00:00"}},
+
+  {"model": "trains.train", "pk": 1, "fields": {"route": 1, "number": "104A", "name": "Sapsan-South",  "avg_speed_kmh": "80.00", "price_factor": "1.000", "features": {}}},
+  {"model": "trains.train", "pk": 2, "fields": {"route": 2, "number": "200B", "name": "Northern Star", "avg_speed_kmh": "75.00", "price_factor": "1.100", "features": {}}},
+  {"model": "trains.train", "pk": 3, "fields": {"route": 3, "number": "050C", "name": "Volga Express", "avg_speed_kmh": "90.00", "price_factor": "1.000", "features": {}}},
+  {"model": "trains.train", "pk": 4, "fields": {"route": 4, "number": "007D", "name": "Red Arrow",     "avg_speed_kmh": "85.00", "price_factor": "1.200", "features": {}}},
+  {"model": "trains.train", "pk": 5, "fields": {"route": 5, "number": "088E", "name": "Kuban Flyer",   "avg_speed_kmh": "95.00", "price_factor": "1.000", "features": {}}},
+
+  {"model": "trains.car", "pk": 1, "fields": {"train": 1, "number": 1, "car_type": "common", "features": {}, "price_factor": "1.000"}},
+  {"model": "trains.car", "pk": 2, "fields": {"train": 1, "number": 2, "car_type": "common", "features": {}, "price_factor": "1.200"}},
+  {"model": "trains.car", "pk": 3, "fields": {"train": 2, "number": 1, "car_type": "common", "features": {}, "price_factor": "1.000"}},
+  {"model": "trains.car", "pk": 4, "fields": {"train": 2, "number": 2, "car_type": "common", "features": {}, "price_factor": "1.150"}},
+  {"model": "trains.car", "pk": 5, "fields": {"train": 3, "number": 1, "car_type": "common", "features": {}, "price_factor": "1.000"}},
+  {"model": "trains.car", "pk": 6, "fields": {"train": 4, "number": 1, "car_type": "common", "features": {}, "price_factor": "1.100"}},
+  {"model": "trains.car", "pk": 7, "fields": {"train": 5, "number": 1, "car_type": "common", "features": {}, "price_factor": "1.000"}},
+
+  {"model": "trains.seat", "pk": 1,  "fields": {"car": 1, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 2,  "fields": {"car": 1, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 3,  "fields": {"car": 1, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 4,  "fields": {"car": 1, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 5,  "fields": {"car": 1, "number": 5, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 6,  "fields": {"car": 2, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 7,  "fields": {"car": 2, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 8,  "fields": {"car": 2, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 9,  "fields": {"car": 2, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 10, "fields": {"car": 2, "number": 5, "seat_type": "common", "price_factor": "1.000"}},
+
+  {"model": "trains.seat", "pk": 11, "fields": {"car": 3, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 12, "fields": {"car": 3, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 13, "fields": {"car": 3, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 14, "fields": {"car": 3, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 15, "fields": {"car": 4, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 16, "fields": {"car": 4, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 17, "fields": {"car": 4, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 18, "fields": {"car": 4, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+
+  {"model": "trains.seat", "pk": 19, "fields": {"car": 5, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 20, "fields": {"car": 5, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 21, "fields": {"car": 5, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 22, "fields": {"car": 5, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+
+  {"model": "trains.seat", "pk": 23, "fields": {"car": 6, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 24, "fields": {"car": 6, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 25, "fields": {"car": 6, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 26, "fields": {"car": 6, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+
+  {"model": "trains.seat", "pk": 27, "fields": {"car": 7, "number": 1, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 28, "fields": {"car": 7, "number": 2, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 29, "fields": {"car": 7, "number": 3, "seat_type": "common", "price_factor": "1.000"}},
+  {"model": "trains.seat", "pk": 30, "fields": {"car": 7, "number": 4, "seat_type": "common", "price_factor": "1.000"}},
+
+  {"model": "trains.departure", "pk": 1,  "fields": {"train": 1, "date": "2026-04-15", "departure_time": "08:00:00"}},
+  {"model": "trains.departure", "pk": 2,  "fields": {"train": 1, "date": "2026-04-16", "departure_time": "08:00:00"}},
+  {"model": "trains.departure", "pk": 3,  "fields": {"train": 1, "date": "2026-04-17", "departure_time": "20:30:00"}},
+
+  {"model": "trains.departure", "pk": 4,  "fields": {"train": 2, "date": "2026-04-15", "departure_time": "18:00:00"}},
+  {"model": "trains.departure", "pk": 5,  "fields": {"train": 2, "date": "2026-04-17", "departure_time": "18:00:00"}},
+
+  {"model": "trains.departure", "pk": 6,  "fields": {"train": 3, "date": "2026-04-15", "departure_time": "07:30:00"}},
+  {"model": "trains.departure", "pk": 7,  "fields": {"train": 3, "date": "2026-04-16", "departure_time": "07:30:00"}},
+  {"model": "trains.departure", "pk": 8,  "fields": {"train": 3, "date": "2026-04-17", "departure_time": "07:30:00"}},
+
+  {"model": "trains.departure", "pk": 9,  "fields": {"train": 4, "date": "2026-04-15", "departure_time": "23:55:00"}},
+  {"model": "trains.departure", "pk": 10, "fields": {"train": 4, "date": "2026-04-16", "departure_time": "23:55:00"}},
+
+  {"model": "trains.departure", "pk": 11, "fields": {"train": 5, "date": "2026-04-15", "departure_time": "10:15:00"}},
+  {"model": "trains.departure", "pk": 12, "fields": {"train": 5, "date": "2026-04-18", "departure_time": "10:15:00"}}
+]
