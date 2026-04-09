@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from .models import Config
+from constance import config
 
 
 def calc_segment_range_subtotal(route, from_order: int, to_order: int) -> Decimal:
@@ -14,9 +14,8 @@ def calc_segment_range_subtotal(route, from_order: int, to_order: int) -> Decima
 def calc_booking_price(route, train, car, seat, from_order: int, to_order: int) -> Decimal:
     """
     booking_price = base_price + sum(seg.base_price) * route.pf * train.pf * car.pf * seat.pf
-    base_price (config) is NOT multiplied.
+    base_price (constance config) is NOT multiplied.
     """
-    cfg = Config.get()
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
     multiplied = (
         subtotal
@@ -25,4 +24,4 @@ def calc_booking_price(route, train, car, seat, from_order: int, to_order: int) 
         * Decimal(car.price_factor)
         * Decimal(seat.price_factor)
     )
-    return (Decimal(cfg.base_price) + multiplied).quantize(Decimal("0.01"))
+    return (config.BASE_PRICE + multiplied).quantize(Decimal("0.01"))

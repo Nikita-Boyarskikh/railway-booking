@@ -37,9 +37,8 @@ COPY --chown=app:app . .
 EXPOSE 8000
 CMD gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers="${GUNICORN_WORKERS:-3}" \
     --access-logfile - \
-    --workers=$(nproc*2+1) \
+    --workers="${GUNICORN_WORKERS:-$(($(nproc)*2+1))}" \
     --max-requests="${GUNICORN_MAX_REQUESTS:-1000}" \
     --max-requests-jitter="${GUNICORN_MAX_REQUESTS_JITTER:-100}" \
     --timeout="${GUNICORN_TIMEOUT:-30}" \

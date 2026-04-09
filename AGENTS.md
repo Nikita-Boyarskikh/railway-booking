@@ -10,6 +10,7 @@ A prototype web application for selling long-distance railway tickets. Passenger
 
 - Search for departures from station A to station B on a given date
 - View available seats and prices for a specific departure
+- Edit runtime configuration (`BASE_PRICE`) via the Django admin (django-constance)
 - Book one or more seats in a single order (one departure per order)
 - Passenger data entered per seat (name, passport number, gender, birth date)
 - Admin panel for managing stations, segments, routes, trains, cars, seats, departures, config
@@ -160,11 +161,13 @@ Time at any intermediate station is computed:
 | station_to | FK → Station | alighting station |
 | passenger | FK → Passenger | |
 
-### Config (singleton)
+### Runtime configuration (django-constance)
 
-| Field | Type | Notes |
-|-------|------|-------|
-| base_price | decimal | fixed addition per booking |
+Runtime, admin-editable settings live in [django-constance](https://django-constance.readthedocs.io/), not in a model. Defined in `config/settings.py:CONSTANCE_CONFIG`. Current keys:
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `BASE_PRICE` | decimal | Fixed addition per booking — read via `from constance import config; config.BASE_PRICE` |
 
 ## Pricing Formula
 
@@ -174,7 +177,7 @@ booking_price = base_price + sum(segment.base_price for each segment in route fr
 order.total_price = sum(booking_price for each booking in order)
 ```
 
-`base_price` is a fixed amount from Config, NOT multiplied by price factors.
+`base_price` is the constance `BASE_PRICE` value, NOT multiplied by price factors.
 
 ## Seat Availability Logic
 

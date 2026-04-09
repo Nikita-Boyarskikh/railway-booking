@@ -6,12 +6,13 @@ def demo_data(db):
     from datetime import date, time, timedelta
     from decimal import Decimal
 
-    from apps.core.models import Config
+    from constance import config
+
     from apps.routes.models import Route, RouteSegment
     from apps.stations.models import Segment, Station
     from apps.trains.models import Car, Departure, Seat, Train
 
-    Config.objects.create(base_price=Decimal("100"))
+    config.BASE_PRICE = Decimal("100")
 
     s1 = Station.objects.create(name="A", code="A")
     s2 = Station.objects.create(name="B", code="B")

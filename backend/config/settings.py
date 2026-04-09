@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,6 +16,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "constance",
     "apps.core",
     "apps.stations",
     "apps.routes",
@@ -70,6 +72,12 @@ DATABASES = {
     }
 }
 
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -84,3 +92,18 @@ REST_FRAMEWORK = {
 }
 
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]
+
+CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_ADDITIONAL_FIELDS = {
+    "decimal_field": [
+        "django.forms.fields.DecimalField",
+        {"max_digits": 10, "decimal_places": 2},
+    ],
+}
+CONSTANCE_CONFIG = {
+    "BASE_PRICE": (
+        Decimal("0.00"),
+        "Fixed amount added to every booking, not multiplied by price factors",
+        "decimal_field",
+    ),
+}

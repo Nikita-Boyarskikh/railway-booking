@@ -9,6 +9,7 @@ Django 6 + DRF API for the railway booking prototype.
 - PostgreSQL 18
 - Gunicorn (prod), Django dev server (local)
 - [uv](https://docs.astral.sh/uv/) for dependency management
+- [django-constance](https://django-constance.readthedocs.io/) for runtime, admin-editable configuration (e.g. `BASE_PRICE`)
 - ruff (lint + format), pytest + pytest-django
 
 ## Structure
@@ -17,7 +18,7 @@ Django 6 + DRF API for the railway booking prototype.
 backend/
 ├── config/              # Django project: settings, urls, wsgi
 ├── apps/
-│   ├── core/            # Config singleton, pricing, availability, timetable utils
+│   ├── core/            # Pricing, availability, timetable utils (no models — runtime config in django-constance)
 │   ├── stations/        # Station, Segment models + API
 │   ├── routes/          # Route, RouteSegment models
 │   ├── trains/          # Train, Car, Seat, Departure models + API

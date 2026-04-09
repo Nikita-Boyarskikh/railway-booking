@@ -1,7 +1,5 @@
 [
-  {"model": "core.config", "pk": 1, "fields": {"base_price": "100.00"}},
-
-  {"model": "stations.station", "pk": 1,  "fields": {"name": "Moscow",            "code": "MOW"}},
+{"model": "stations.station", "pk": 1,  "fields": {"name": "Moscow",            "code": "MOW"}},
   {"model": "stations.station", "pk": 2,  "fields": {"name": "Tula",              "code": "TUL"}},
   {"model": "stations.station", "pk": 3,  "fields": {"name": "Voronezh",          "code": "VOR"}},
   {"model": "stations.station", "pk": 4,  "fields": {"name": "Rostov-on-Don",     "code": "ROV"}},
