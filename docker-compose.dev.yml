@@ -7,6 +7,8 @@ services:
     entrypoint: ./entrypoint.sh
     environment:
       DJANGO_DEBUG: 1
+    volumes:
+      - backend_venv:/app/.venv
     develop:
       watch:
         - action: sync
@@ -20,9 +22,6 @@ services:
         - action: rebuild
           initial_sync: true
           path: ./backend/uv.lock
-        - action: rebuild
-          initial_sync: true
-          path: ./backend/.venv
         - action: rebuild
           initial_sync: true
           path: ./backend/pyproject.toml
@@ -66,3 +65,6 @@ services:
           initial_sync: true
           path: ./frontend/tsconfig.json
           target: /app/tsconfig.json
+
+volumes:
+  backend_venv:

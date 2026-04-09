@@ -29,6 +29,23 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --watch
 
 The dev override is opt-in: plain `docker compose up --build` still produces the production-style image (nginx + built bundle).
 
+## Environment variables
+
+Copied from `.env.example` into `.env` and consumed by `docker-compose.yml`.
+
+| Variable | Default            | Used by | Description |
+|---|--------------------|---|---|
+| `POSTGRES_DB` | `railway`          | db, backend | Postgres database name |
+| `POSTGRES_USER` | `railway`          | db, backend | Postgres user |
+| `POSTGRES_PASSWORD` | `railway`          | db, backend | Postgres password |
+| `POSTGRES_HOST` | `db`               | backend | Postgres host (compose service name) |
+| `POSTGRES_PORT` | `5432`             | backend | Postgres port |
+| `DJANGO_SECRET_KEY` | `dev-insecure-...` | backend | Django `SECRET_KEY` — replace in any non-dev env |
+| `DJANGO_DEBUG` | `0`                | backend | `1` enables Django debug mode |
+| `DJANGO_ALLOWED_HOSTS` | `*`                | backend | Comma-separated `ALLOWED_HOSTS` |
+
+The frontend build needs no env vars; the dev override sets `VITE_API_PROXY=http://backend:8000` for the Vite dev server.
+
 ## Frontend pages
 
 | Route | Params | Description |

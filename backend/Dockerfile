@@ -1,8 +1,10 @@
-FROM python:3.14-slim
+# ---- builder ----------------------------------------------------------------
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl \
@@ -11,11 +13,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install uv
 
 WORKDIR /app
-
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 
-COPY . .
+# ---- runtime ----------------------------------------------------------------
+FROM python:3.14-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1000 app \
+ && useradd  --system --uid 1000 --gid app --home /app --shell /usr/sbin/nologin app
+
+USER app
+WORKDIR /app
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
+COPY --chown=app:app . .
 
 EXPOSE 8000
-CMD uv run gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+CMD gunicorn config.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers="${GUNICORN_WORKERS:-3}" \
+    --access-logfile - \
+    --workers=$(nproc*2+1) \
+    --max-requests="${GUNICORN_MAX_REQUESTS:-1000}" \
+    --max-requests-jitter="${GUNICORN_MAX_REQUESTS_JITTER:-100}" \
+    --timeout="${GUNICORN_TIMEOUT:-30}" \
+    --graceful-timeout="${GUNICORN_GRACEFUL_TIMEOUT:-30}" \
+    --preload
