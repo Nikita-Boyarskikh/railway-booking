@@ -4,6 +4,7 @@ import uuid as uuid_mod
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.availability import resolve_station_range, seat_is_free
 from apps.core.cache import bump_departure_generation
@@ -19,7 +20,10 @@ class SeatUnavailableError(Exception):
     """Raised when a requested seat was taken between validation and commit."""
 
     def __init__(self, car_number: int, seat_number: int):
-        super().__init__(f"Seat car={car_number} seat={seat_number} no longer available")
+        super().__init__(_("Seat car={car_number} seat={seat_number} no longer available").format(
+            seat_number=seat_number,
+            car_number=car_number,
+        ))
         self.car_number = car_number
         self.seat_number = seat_number
 
@@ -52,14 +56,14 @@ def create_order(
         SeatUnavailableError: If a requested seat is already booked for the range.
     """
     if not items:
-        raise InvalidRequestError("items must not be empty")
+        raise InvalidRequestError(_("Items must not be empty"))
     if station_from_code == station_to_code:
-        raise InvalidRequestError("station_from and station_to must differ")
+        raise InvalidRequestError(_("Station_from and station_to must differ"))
 
     try:
         departure = Departure.objects.select_related("train__route").get(uuid=departure_uuid)
     except (Departure.DoesNotExist, ValueError) as e:
-        raise InvalidRequestError("Departure not found") from e
+        raise InvalidRequestError(_("Departure not found")) from e
 
     stations = {
         s.code: s for s in Station.objects.filter(code__in=[station_from_code, station_to_code])
@@ -67,17 +71,17 @@ def create_order(
     station_from = stations.get(station_from_code)
     station_to = stations.get(station_to_code)
     if not station_from or not station_to:
-        raise InvalidRequestError("Unknown station code")
+        raise InvalidRequestError(_("Unknown station code"))
 
     route = departure.train.route
     rng = resolve_station_range(route, station_from.id, station_to.id)
     if not rng:
         raise InvalidRequestError(
-            "Route does not cover the requested station_from → station_to segment"
+            _("Route does not cover the requested station_from → station_to segment")
         )
     from_order, to_order = rng
     if to_order <= from_order:
-        raise InvalidRequestError("station_to must come after station_from along the route")
+        raise InvalidRequestError(_("Station_to must come after station_from along the route"))
 
     order = Order.objects.create(total_price=Decimal("0"))
     total = Decimal("0")
@@ -87,7 +91,7 @@ def create_order(
             car_number = int(item["car_number"])
             seat_number = int(item["seat_number"])
         except (KeyError, TypeError, ValueError) as e:
-            raise InvalidRequestError("Each item requires car_number and seat_number") from e
+            raise InvalidRequestError(_("Each item requires car_number and seat_number")) from e
 
         try:
             seat = (
@@ -101,7 +105,10 @@ def create_order(
             )
         except Seat.DoesNotExist as e:
             raise InvalidRequestError(
-                f"Seat car={car_number} seat={seat_number} not found on this train"
+                _("Seat car={car_number} seat={seat_number} not found on this train").format(
+                    car_number=car_number,
+                    seat_number=seat_number,
+                )
             ) from e
 
         if not seat_is_free(departure, seat.pk, from_order, to_order):

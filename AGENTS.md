@@ -50,7 +50,7 @@ The data model is designed so the following can be added later without major sch
 | name | str | |
 | code | str | unique short code, unique index |
 
-### Segment
+### Connection
 
 A span of track between two adjacent stations.
 
@@ -75,13 +75,13 @@ An ordered sequence of segments forming a complete path.
 
 ### RouteSegment
 
-| Field | Type | Notes |
-|-------|------|-------|
-| id | PK | |
-| route | FK → Route | unique together with segment; unique together with order |
-| segment | FK → Segment | |
-| order | int | sequence number in route |
-| stop_duration | duration | default 0, stop time at segment's station_from |
+| Field | Type            | Notes |
+|-------|-----------------|-------|
+| id | PK              | |
+| route | FK → Route      | unique together with segment; unique together with order |
+| segment | FK → Connection | |
+| order | int             | sequence number in route |
+| stop_duration | duration        | default 0, stop time at segment's station_from |
 
 ### Train
 
@@ -265,7 +265,7 @@ railway-booking/
 │   ├── manage.py
 │   ├── config/              # settings, urls, wsgi
 │   ├── apps/
-│   │   ├── stations/        # Station, Segment models + API
+│   │   ├── stations/        # Station, Connection models + API
 │   │   ├── routes/          # Route, RouteSegment models + API
 │   │   ├── trains/          # Train, Car, Seat, Departure models + API
 │   │   ├── bookings/        # Order, Booking, Passenger models + API

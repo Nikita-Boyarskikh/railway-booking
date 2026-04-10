@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                 ('order', models.PositiveIntegerField()),
                 ('stop_duration', models.DurationField(default=datetime.timedelta)),
                 ('route', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='route_segments', to='routes.route')),
-                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='stations.segment')),
+                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='stations.connection')),
             ],
             options={
                 'ordering': ['order'],

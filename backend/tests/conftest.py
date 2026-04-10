@@ -6,7 +6,7 @@ import pytest
 from constance import config
 
 from apps.routes.models import Route, RouteSegment
-from apps.stations.models import Segment, Station
+from apps.stations.models import Connection, Station
 from apps.trains.models import Car, Departure, Seat, Train
 
 
@@ -29,9 +29,9 @@ def test_data(db: None) -> TypeTestData:
     s3 = Station.objects.create(name="C", code="C")
     s4 = Station.objects.create(name="D", code="D")
 
-    seg1 = Segment.objects.create(station_from=s1, station_to=s2, distance_km=100, base_price=200)
-    seg2 = Segment.objects.create(station_from=s2, station_to=s3, distance_km=100, base_price=300)
-    seg3 = Segment.objects.create(station_from=s3, station_to=s4, distance_km=100, base_price=400)
+    seg1 = Connection.objects.create(station_from=s1, station_to=s2, distance_km=100, base_price=200)
+    seg2 = Connection.objects.create(station_from=s2, station_to=s3, distance_km=100, base_price=300)
+    seg3 = Connection.objects.create(station_from=s3, station_to=s4, distance_km=100, base_price=400)
 
     route = Route.objects.create(name="A-D", price_factor=Decimal("1.0"))
     RouteSegment.objects.create(route=route, segment=seg1, order=0, stop_duration=timedelta(0))

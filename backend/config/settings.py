@@ -1,6 +1,7 @@
 import os
 from decimal import Decimal
 from pathlib import Path
+from django.utils.translation import gettext_lazy as _
 
 import django_stubs_ext
 
@@ -115,7 +116,7 @@ CONSTANCE_ADDITIONAL_FIELDS = {
 CONSTANCE_CONFIG = {
     "BASE_PRICE": (
         Decimal("0.00"),
-        "Fixed amount added to every booking, not multiplied by price factors",
+        _("Fixed amount added to every booking, not multiplied by price factors"),
         "decimal_field",
     ),
 }

@@ -13,14 +13,14 @@ class Station(models.Model):
 
     bookings_from: QuerySet[Booking]
     bookings_to: QuerySet[Booking]
-    segments_out: QuerySet[Segment]
-    segments_in: QuerySet[Segment]
+    segments_out: QuerySet[Connection]
+    segments_in: QuerySet[Connection]
 
     def __str__(self) -> str:
         return f"{self.code} — {self.name}"
 
 
-class Segment(models.Model):
+class Connection(models.Model):
     """A span of track between two adjacent stations with a base price."""
 
     station_from = models.ForeignKey(Station, related_name="segments_out", on_delete=models.CASCADE)

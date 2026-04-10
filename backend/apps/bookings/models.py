@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 from enum import auto
+from django.utils.translation import gettext_lazy as _
 
 from django.db import models
 from django.db.models import QuerySet
@@ -9,8 +10,8 @@ from django.db.models import QuerySet
 class Gender(models.TextChoices):
     """Passenger gender choices."""
 
-    MALE = auto()
-    FEMALE = auto()
+    MALE = "male", _("Male")
+    FEMALE = "female", _("Female")
 
 
 class Passenger(models.Model):
@@ -36,7 +37,7 @@ class Order(models.Model):
     bookings: QuerySet[Booking]
 
     def __str__(self) -> str:
-        return f"Order #{self.pk}"
+        return _("Order #{uuid}").format(uuid=self.uuid)
 
 
 class Booking(models.Model):
@@ -61,4 +62,10 @@ class Booking(models.Model):
     passenger_id: int
 
     def __str__(self) -> str:
-        return f"Booking #{self.pk} seat={self.seat_id} dep={self.departure_id}"
+        return _("Booking {train_number} {station_from}→{station_to} car={car_number} seat={seat_number}").format(
+            train_number=self.departure.train.number,
+            station_from=self.station_from.code,
+            station_to=self.station_to.code,
+            car_number=self.seat.car.number,
+            seat_number=self.seat.number,
+        )

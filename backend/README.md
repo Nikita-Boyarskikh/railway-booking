@@ -20,7 +20,7 @@ backend/
 ├── config/              # Django project: settings, urls, wsgi
 ├── apps/
 │   ├── core/            # Pricing, availability, timetable utils (no models — runtime config in django-constance)
-│   ├── stations/        # Station, Segment models + API
+│   ├── stations/        # Station, Connection models + API
 │   ├── routes/          # Route, RouteSegment models
 │   ├── trains/          # Train, Car, Seat, Departure models + API
 │   └── bookings/        # Order, Booking, Passenger models + API

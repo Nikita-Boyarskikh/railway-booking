@@ -8,7 +8,7 @@ from apps.trains.models import Train
 
 
 class Route(models.Model):
-    """An ordered chain of :class:`~apps.stations.models.Segment` forming a full path."""
+    """An ordered chain of :class:`~apps.stations.models.Connection` forming a full path."""
 
     name = models.CharField(max_length=128)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
@@ -25,7 +25,7 @@ class RouteSegment(models.Model):
     """A segment's position inside a route with optional stop duration."""
 
     route = models.ForeignKey(Route, related_name="route_segments", on_delete=models.CASCADE)
-    segment = models.ForeignKey("stations.Segment", on_delete=models.PROTECT)
+    segment = models.ForeignKey("stations.Connection", on_delete=models.PROTECT)
     order = models.PositiveIntegerField()
     stop_duration = models.DurationField(default=timedelta)
 

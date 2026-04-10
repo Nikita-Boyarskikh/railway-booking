@@ -1,5 +1,6 @@
 import uuid
 from decimal import Decimal
+from django.utils.translation import gettext_lazy as _
 
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -28,18 +29,18 @@ class Train(models.Model):
 class CarType(models.TextChoices):
     """Predefined types of cars, used for filtering and default pricing/features."""
 
-    COMMON = "common"
-    SLEEPER = "sleeper"
-    LUXURY = "luxury"
-    DINING = "dining"
-    OTHER = "other"
+    COMMON = "common", _("Common")
+    SLEEPER = "sleeper", _("Sleeper")
+    LUXURY = "luxury", _("Luxury")
+    DINING = "dining", _("Dining")
+    OTHER = "other", _("Other")
 
 
 class Car(models.Model):
     """A wagon within a train, containing numbered seats."""
 
     train = models.ForeignKey(Train, related_name="cars", on_delete=models.CASCADE)
-    number = models.PositiveIntegerField()
+    number = models.PositiveIntegerField(verbose_name=_("Car number"))
     car_type = models.CharField(max_length=32, default=CarType.COMMON, choices=CarType.choices)
     features = models.JSONField(default=dict, blank=True)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
@@ -58,10 +59,10 @@ class Car(models.Model):
 class SeatType(models.TextChoices):
     """Predefined types of seats, used for filtering and default pricing/features."""
 
-    COMMON = "common"
-    VIP = "vip"
-    SLEEPER = "sleeper"
-    OTHER = "other"
+    COMMON = "common", _("Common")
+    VIP = "vip", _("VIP")
+    SLEEPER = "sleeper", _("Sleeper")
+    OTHER = "other", _("Other")
 
 
 class Seat(models.Model):

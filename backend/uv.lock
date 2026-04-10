@@ -374,6 +374,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "django" },
     { name = "django-constance" },
+    { name = "django-stubs-ext" },
     { name = "djangorestframework" },
     { name = "gunicorn" },
     { name = "psycopg", extra = ["c", "pool"] },
@@ -397,6 +398,7 @@ dev = [
 requires-dist = [
     { name = "django", specifier = ">=6.0,<6.1" },
     { name = "django-constance", specifier = ">=4.3" },
+    { name = "django-stubs-ext", specifier = ">=6.0.2" },
     { name = "djangorestframework", specifier = ">=3.15" },
     { name = "gunicorn", specifier = ">=23.0" },
     { name = "psycopg", extras = ["c", "pool"], specifier = ">=3.2" },
