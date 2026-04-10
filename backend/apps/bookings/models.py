@@ -3,6 +3,7 @@ from decimal import Decimal
 from enum import auto
 
 from django.db import models
+from django.db.models import QuerySet
 
 
 class Gender(models.TextChoices):
@@ -32,6 +33,8 @@ class Order(models.Model):
     total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
     features = models.JSONField(default=dict, blank=True)
 
+    bookings: QuerySet[Booking]
+
     def __str__(self) -> str:
         return f"Order #{self.pk}"
 
@@ -49,6 +52,13 @@ class Booking(models.Model):
         "stations.Station", related_name="bookings_to", on_delete=models.PROTECT
     )
     passenger = models.ForeignKey(Passenger, on_delete=models.PROTECT)
+
+    order_id: int
+    departure_id: int
+    seat_id: int
+    station_from_id: int
+    station_to_id: int
+    passenger_id: int
 
     def __str__(self) -> str:
         return f"Booking #{self.pk} seat={self.seat_id} dep={self.departure_id}"

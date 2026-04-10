@@ -1,22 +1,24 @@
 import pytest
 
 from apps.bookings.services import SeatUnavailableError, create_order
+from apps.core.types import OrderItemInput
+from tests.conftest import TypeTestData
 
 
-def _item(car_number, seat_number):
-    return {
-        "car_number": car_number,
-        "seat_number": seat_number,
-        "passenger_name": "John",
-        "passenger_passport": "123",
-        "passenger_gender": "male",
-        "passenger_birth_date": "1990-01-01",
-    }
+def _item(car_number: int, seat_number: int) -> OrderItemInput:
+    return OrderItemInput(
+        car_number=car_number,
+        seat_number=seat_number,
+        passenger_name="John",
+        passenger_passport="123",
+        passenger_gender="male",
+        passenger_birth_date="1990-01-01",
+    )
 
 
 @pytest.mark.django_db
-def test_non_overlapping_segments_share_seat(demo_data):
-    d = demo_data
+def test_non_overlapping_segments_share_seat(test_data: TypeTestData) -> None:
+    d = test_data
     s = d["stations"]
     item = _item(d["car"].number, d["seat"].number)
     # Book A→B on seat 1
@@ -27,8 +29,8 @@ def test_non_overlapping_segments_share_seat(demo_data):
 
 
 @pytest.mark.django_db
-def test_overlapping_segments_conflict(demo_data):
-    d = demo_data
+def test_overlapping_segments_conflict(test_data: TypeTestData) -> None:
+    d = test_data
     s = d["stations"]
     item = _item(d["car"].number, d["seat"].number)
     # Book A→C on seat 1

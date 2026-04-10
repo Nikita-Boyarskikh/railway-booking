@@ -89,7 +89,7 @@ API: http://localhost:8000/api/ — admin: http://localhost:8000/admin/
 | Lint                 | `uv run ruff check .`                                 |
 | Lint + autofix       | `uv run ruff check --fix .`                           |
 | Format               | `uv run ruff format .`                                |
-| Type check           | `uv run mypy apps/ config/`                           |
+| Type check           | `uv run mypy .`                                       |
 
 ## Docker
 

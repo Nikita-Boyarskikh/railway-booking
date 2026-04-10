@@ -4,17 +4,20 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from pytest_django import DjangoAssertNumQueries
 
 from apps.bookings.models import Booking, Order, Passenger
 from apps.trains.services import search_departures
+from tests.conftest import TypeTestData
 
 
 @pytest.mark.django_db
 def test_search_departures_query_count_constant_in_bookings(
-    demo_data, django_assert_max_num_queries
-):
+    test_data: TypeTestData,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
     """Query count for ``search_departures`` must not grow with booking count."""
-    d = demo_data
+    d = test_data
     s = d["stations"]
 
     # Baseline: with zero bookings, call once to warm any lazy imports.

@@ -3,6 +3,8 @@ import uuid
 
 import django.db.models.deletion
 from decimal import Decimal
+
+from django.core.validators import MinValueValidator
 from django.db import migrations, models
 
 
@@ -21,7 +23,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.CharField(db_index=True, max_length=16, unique=True)),
                 ('name', models.CharField(blank=True, default='', max_length=128)),
-                ('avg_speed_kmh', models.DecimalField(decimal_places=2, max_digits=6)),
+                ('avg_speed_kmh', models.FloatField(validators=[MinValueValidator(0.0)])),
                 ('price_factor', models.DecimalField(decimal_places=3, default=Decimal('1.0'), max_digits=6)),
                 ('features', models.JSONField(blank=True, default=dict)),
                 ('route', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='trains', to='routes.route')),

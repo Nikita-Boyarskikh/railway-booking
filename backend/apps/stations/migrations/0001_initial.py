@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
             name='Segment',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('distance_km', models.DecimalField(decimal_places=2, max_digits=8)),
+                ('distance_km', models.PositiveIntegerField()),
                 ('base_price', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('station_from', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='segments_out', to='stations.station')),
                 ('station_to', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='segments_in', to='stations.station')),

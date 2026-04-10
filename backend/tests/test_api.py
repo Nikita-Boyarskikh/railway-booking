@@ -1,10 +1,12 @@
 import pytest
 from rest_framework.test import APIClient
 
+from tests.conftest import TypeTestData
+
 
 @pytest.mark.django_db
-def test_full_flow(demo_data):
-    d = demo_data
+def test_full_flow(test_data: TypeTestData) -> None:
+    d = test_data
     s = d["stations"]
     client = APIClient()
 

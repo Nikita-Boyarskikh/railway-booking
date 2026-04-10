@@ -1,5 +1,6 @@
 """Tests for the Redis-backed cache layer (locmem in the test settings)."""
 
+from collections.abc import Generator
 from datetime import date
 
 import pytest
@@ -7,12 +8,14 @@ from django.core.cache import cache
 
 from apps.bookings.services import create_order
 from apps.core.cache import STATIONS_KEY, get_departure_generation
+from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
 from apps.trains.services import list_seats, search_departures
+from tests.conftest import TypeTestData
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache():
+def _clear_cache() -> Generator[None]:
     """Wipe the process-local cache between tests so they don't bleed state."""
     cache.clear()
     yield
@@ -20,7 +23,7 @@ def _clear_cache():
 
 
 @pytest.mark.django_db
-def test_stations_cache_invalidated_on_station_change(demo_data):
+def test_stations_cache_invalidated_on_station_change(test_data: TypeTestData) -> None:
     """Creating or deleting a Station drops the cached stations:all entry."""
     cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL"}], timeout=300)
     Station.objects.create(name="New", code="NEW")
@@ -32,14 +35,16 @@ def test_stations_cache_invalidated_on_station_change(demo_data):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_list_seats_cached_and_invalidated_on_booking(demo_data):
+def test_list_seats_cached_and_invalidated_on_booking(test_data: TypeTestData) -> None:
     """``list_seats`` hits the cache on repeat calls; a booking bumps the generation."""
-    d = demo_data
+    d = test_data
     s = d["stations"]
 
     first = list_seats(d["departure"], s[0].code, s[3].code)
     # Mutate the in-cache entry to prove the next call returns *this* value.
-    cache_hit_marker = {"cars": [{"marker": "cached"}]}
+    cache_hit_marker = SeatsResponse(
+        cars=[CarDict(number=1, car_type="common", features={"from_cache": 1}, seats=[])]
+    )
     # Find the key the service stored under and overwrite it.
     gen = get_departure_generation(str(d["departure"].uuid))
     key = f"seats:{d['departure'].uuid}:{s[0].code}:{s[3].code}:g{gen}"
@@ -72,9 +77,9 @@ def test_list_seats_cached_and_invalidated_on_booking(demo_data):
 
 
 @pytest.mark.django_db
-def test_search_departures_cached(demo_data):
+def test_search_departures_cached(test_data: TypeTestData) -> None:
     """``search_departures`` caches its output under ``search:{from}:{to}:{date}``."""
-    d = demo_data
+    d = test_data
     s = d["stations"]
 
     first = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
@@ -84,8 +89,18 @@ def test_search_departures_cached(demo_data):
     # Poison the cache; subsequent call must return the poisoned value.
     cache.set(
         f"search:{s[0].code}:{s[3].code}:2026-05-01",
-        [{"marker": "poisoned", "train_number": "X", "train_name": "X"}],
+        [
+            DepartureSummary(
+                uuid="poisoned",
+                train_number="X",
+                train_name="X",
+                departure_time="00:00",
+                arrival_time="00:00",
+                free_seat_count=1,
+                min_price=None,
+            )
+        ],
         timeout=30,
     )
     second = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
-    assert second[0]["marker"] == "poisoned"
+    assert second[0]["uuid"] == "poisoned"

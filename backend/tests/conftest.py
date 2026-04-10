@@ -1,17 +1,27 @@
+from datetime import date, time, timedelta
+from decimal import Decimal
+from typing import TypedDict
+
 import pytest
+from constance import config
+
+from apps.routes.models import Route, RouteSegment
+from apps.stations.models import Segment, Station
+from apps.trains.models import Car, Departure, Seat, Train
+
+
+class TypeTestData(TypedDict):
+    stations: list[Station]
+    route: Route
+    train: Train
+    car: Car
+    seat: Seat
+    seat2: Seat
+    departure: Departure
 
 
 @pytest.fixture
-def demo_data(db):
-    from datetime import date, time, timedelta
-    from decimal import Decimal
-
-    from constance import config
-
-    from apps.routes.models import Route, RouteSegment
-    from apps.stations.models import Segment, Station
-    from apps.trains.models import Car, Departure, Seat, Train
-
+def test_data(db: None) -> TypeTestData:
     config.BASE_PRICE = Decimal("100")
 
     s1 = Station.objects.create(name="A", code="A")
@@ -32,7 +42,7 @@ def demo_data(db):
         route=route,
         number="100",
         name="T",
-        avg_speed_kmh=Decimal("100"),
+        avg_speed_kmh=100,
         price_factor=Decimal("1.0"),
     )
     car = Car.objects.create(train=train, number=1, price_factor=Decimal("1.0"))
@@ -40,15 +50,17 @@ def demo_data(db):
     seat2 = Seat.objects.create(car=car, number=2, price_factor=Decimal("1.0"))
 
     departure = Departure.objects.create(
-        train=train, date=date(2026, 5, 1), departure_time=time(10, 0)
+        train=train,
+        date=date(2026, 5, 1),
+        departure_time=time(10, 0),
     )
 
-    return {
-        "stations": [s1, s2, s3, s4],
-        "route": route,
-        "train": train,
-        "car": car,
-        "seat": seat,
-        "seat2": seat2,
-        "departure": departure,
-    }
+    return TypeTestData(
+        stations=[s1, s2, s3, s4],
+        route=route,
+        train=train,
+        car=car,
+        seat=seat,
+        seat2=seat2,
+        departure=departure,
+    )

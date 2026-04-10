@@ -1,7 +1,9 @@
 import uuid
 from decimal import Decimal
 
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import QuerySet
 
 
 class Train(models.Model):
@@ -10,9 +12,13 @@ class Train(models.Model):
     route = models.ForeignKey("routes.Route", related_name="trains", on_delete=models.PROTECT)
     number = models.CharField(max_length=16, unique=True, db_index=True)
     name = models.CharField(max_length=128, blank=True, default="")
-    avg_speed_kmh = models.DecimalField(max_digits=6, decimal_places=2)
+    avg_speed_kmh = models.FloatField(validators=[MinValueValidator(0.0)])
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
     features = models.JSONField(default=dict, blank=True)
+
+    cars: QuerySet[Car]
+    departures: QuerySet[Departure]
+    route_id: int
 
     def __str__(self) -> str:
         return f"{self.number} {self.name}".strip()
@@ -26,6 +32,9 @@ class Car(models.Model):
     car_type = models.CharField(max_length=32, default="common")
     features = models.JSONField(default=dict, blank=True)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
+
+    seats: QuerySet[Seat]
+    train_id: int
 
     class Meta:
         unique_together = [("train", "number")]
@@ -43,6 +52,8 @@ class Seat(models.Model):
     seat_type = models.CharField(max_length=32, default="common")
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
 
+    car_id: int
+
     class Meta:
         unique_together = [("car", "number")]
         ordering = ["number"]
@@ -58,6 +69,8 @@ class Departure(models.Model):
     train = models.ForeignKey(Train, related_name="departures", on_delete=models.CASCADE)
     date = models.DateField()
     departure_time = models.TimeField()
+
+    train_id: int
 
     class Meta:
         ordering = ["date", "departure_time"]

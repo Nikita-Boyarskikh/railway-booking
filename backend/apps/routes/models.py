@@ -2,6 +2,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import models
+from django.db.models import QuerySet
+
+from apps.trains.models import Train
 
 
 class Route(models.Model):
@@ -10,6 +13,9 @@ class Route(models.Model):
     name = models.CharField(max_length=128)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
     features = models.JSONField(default=dict, blank=True)
+
+    trains: QuerySet[Train]
+    route_segments: QuerySet[RouteSegment]
 
     def __str__(self) -> str:
         return self.name
@@ -22,6 +28,9 @@ class RouteSegment(models.Model):
     segment = models.ForeignKey("stations.Segment", on_delete=models.PROTECT)
     order = models.PositiveIntegerField()
     stop_duration = models.DurationField(default=timedelta)
+
+    route_id: int
+    segment_id: int
 
     class Meta:
         unique_together = [("route", "segment", "order")]
