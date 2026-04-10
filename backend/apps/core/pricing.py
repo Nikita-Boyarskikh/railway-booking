@@ -14,13 +14,15 @@ from decimal import Decimal
 
 from constance import config
 from django.db.models import QuerySet
+from djmoney.money import Money
 
 from apps.core.db_utils import use_prefetched_if_available
 from apps.routes.models import Route, RouteSegment
 from apps.trains.models import Seat
+from config.settings import DEFAULT_CURRENCY
 
 
-def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) -> Decimal:
+def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) -> Money:
     """
     Return ``sum(segment.base_price)`` for orders in ``[from_order, to_order)``.
 
@@ -35,11 +37,11 @@ def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) ->
     )
     return sum(
         (rs.segment.base_price for rs in rss if from_order <= rs.order < to_order),
-        Decimal("0"),
+        Money(currency=DEFAULT_CURRENCY),
     )
 
 
-def calc_booking_price(subtotal: Decimal, seat: Seat) -> Decimal:
+def calc_booking_price(subtotal: Money, seat: Seat) -> Money:
     """Return the final price for one seat on a booking with a given segment range subtotal.
 
     NOTE: Use :func:`calc_segment_range_subtotal` to get subtotal from a route and segment range.
@@ -53,5 +55,4 @@ def calc_booking_price(subtotal: Decimal, seat: Seat) -> Decimal:
         * seat.car.price_factor
         * seat.price_factor
     )
-    base: Decimal = Decimal(str(config.BASE_PRICE))
-    return (base + multiplied).quantize(Decimal("0.01"))
+    return Money(config.BASE_PRICE, currency=DEFAULT_CURRENCY) + multiplied

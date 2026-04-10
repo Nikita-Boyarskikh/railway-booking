@@ -13,6 +13,7 @@ dependencies = [
     "django-constance>=4.3",
     "redis[hiredis]>=7.4.0",
     "django-stubs-ext>=6.0.2",
+    "django-money>=3.6.0",
 ]
 
 [dependency-groups]

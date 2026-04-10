@@ -1,6 +1,7 @@
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
+from djmoney.models.fields import MoneyField
 
 from apps.bookings.models import Booking
 
@@ -26,7 +27,7 @@ class Connection(models.Model):
     station_from = models.ForeignKey(Station, related_name="segments_out", on_delete=models.CASCADE)
     station_to = models.ForeignKey(Station, related_name="segments_in", on_delete=models.CASCADE)
     distance_km = models.FloatField(validators=[MinValueValidator(0.0)])
-    base_price = models.DecimalField(max_digits=10, decimal_places=2)
+    base_price = MoneyField(max_digits=10, decimal_places=2)
 
     station_from_id: int
     station_to_id: int

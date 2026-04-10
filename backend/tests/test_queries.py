@@ -29,7 +29,7 @@ def test_search_departures_query_count_constant_in_bookings(
     # Create N bookings on various (seat, segment) combinations. We only have
     # two seats in the fixture, so alternate seats and segments to spread the
     # load while keeping every pair non-overlapping enough to succeed.
-    order = Order.objects.create(total_price=Decimal("0"))
+    order = Order.objects.create()
     departure = d["departure"]
     seats = [d["seat"], d["seat2"]]
     ranges = [(s[0], s[1]), (s[1], s[2]), (s[2], s[3])]

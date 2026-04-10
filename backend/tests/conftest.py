@@ -22,32 +22,31 @@ class TypeTestData(TypedDict):
 
 @pytest.fixture
 def test_data(db: None) -> TypeTestData:
-    config.BASE_PRICE = Decimal("100")
+    config.BASE_PRICE = Decimal(100)
 
-    s1 = Station.objects.create(name="A", code="A")
-    s2 = Station.objects.create(name="B", code="B")
-    s3 = Station.objects.create(name="C", code="C")
-    s4 = Station.objects.create(name="D", code="D")
+    station_a = Station.objects.create(name="A", code="A")
+    station_b = Station.objects.create(name="B", code="B")
+    station_c = Station.objects.create(name="C", code="C")
+    station_d = Station.objects.create(name="D", code="D")
 
-    seg1 = Connection.objects.create(station_from=s1, station_to=s2, distance_km=100, base_price=200)
-    seg2 = Connection.objects.create(station_from=s2, station_to=s3, distance_km=100, base_price=300)
-    seg3 = Connection.objects.create(station_from=s3, station_to=s4, distance_km=100, base_price=400)
+    segment_ab = Connection.objects.create(station_from=station_a, station_to=station_b, distance_km=100, base_price=200)
+    segment_bc = Connection.objects.create(station_from=station_b, station_to=station_c, distance_km=100, base_price=300)
+    segment_cd = Connection.objects.create(station_from=station_c, station_to=station_d, distance_km=100, base_price=400)
 
-    route = Route.objects.create(name="A-D", price_factor=Decimal("1.0"))
-    RouteSegment.objects.create(route=route, segment=seg1, order=0, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=route, segment=seg2, order=1, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=route, segment=seg3, order=2, stop_duration=timedelta(0))
+    route = Route.objects.create(name="A-D")
+    RouteSegment.objects.create(route=route, segment=segment_ab, order=0, stop_duration=timedelta(0))
+    RouteSegment.objects.create(route=route, segment=segment_bc, order=1, stop_duration=timedelta(0))
+    RouteSegment.objects.create(route=route, segment=segment_cd, order=2, stop_duration=timedelta(0))
 
     train = Train.objects.create(
         route=route,
         number="100",
         name="T",
         avg_speed_kmh=100,
-        price_factor=Decimal("1.0"),
     )
-    car = Car.objects.create(train=train, number=1, price_factor=Decimal("1.0"))
-    seat = Seat.objects.create(car=car, number=1, price_factor=Decimal("1.0"))
-    seat2 = Seat.objects.create(car=car, number=2, price_factor=Decimal("1.0"))
+    car = Car.objects.create(train=train, number=1)
+    seat = Seat.objects.create(car=car, number=1)
+    seat2 = Seat.objects.create(car=car, number=2)
 
     departure = Departure.objects.create(
         train=train,
@@ -56,7 +55,7 @@ def test_data(db: None) -> TypeTestData:
     )
 
     return TypeTestData(
-        stations=[s1, s2, s3, s4],
+        stations=[station_a, station_b, station_c, station_d],
         route=route,
         train=train,
         car=car,

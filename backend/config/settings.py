@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "constance",
+    "djmoney",
     "apps.core",
     "apps.stations",
     "apps.routes",
@@ -91,6 +92,10 @@ CACHES = {
     }
 }
 
+CURRENCIES = ('USD',)
+DEFAULT_CURRENCY = 'USD'
+SERIALIZATION_MODULES = {"json": "djmoney.serializers"}
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -115,7 +120,7 @@ CONSTANCE_ADDITIONAL_FIELDS = {
 }
 CONSTANCE_CONFIG = {
     "BASE_PRICE": (
-        Decimal("0.00"),
+        0,
         _("Fixed amount added to every booking, not multiplied by price factors"),
         "decimal_field",
     ),

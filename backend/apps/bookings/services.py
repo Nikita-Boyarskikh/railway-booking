@@ -83,7 +83,7 @@ def create_order(
     if to_order <= from_order:
         raise InvalidRequestError(_("Station_to must come after station_from along the route"))
 
-    order = Order.objects.create(total_price=Decimal("0"))
+    order = Order.objects.create()
     total = Decimal("0")
 
     for item in items:

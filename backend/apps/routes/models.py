@@ -1,5 +1,4 @@
 from datetime import timedelta
-from decimal import Decimal
 
 from django.db import models
 from django.db.models import QuerySet
@@ -11,7 +10,7 @@ class Route(models.Model):
     """An ordered chain of :class:`~apps.stations.models.Connection` forming a full path."""
 
     name = models.CharField(max_length=128)
-    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
+    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
     features = models.JSONField(default=dict, blank=True)
 
     trains: QuerySet[Train]

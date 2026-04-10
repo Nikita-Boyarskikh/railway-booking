@@ -1,10 +1,9 @@
 import uuid
-from decimal import Decimal
-from enum import auto
 from django.utils.translation import gettext_lazy as _
 
 from django.db import models
 from django.db.models import QuerySet
+from djmoney.models.fields import MoneyField
 
 
 class Gender(models.TextChoices):
@@ -31,7 +30,7 @@ class Order(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    total_price = MoneyField(max_digits=12, decimal_places=2, default=0)
     features = models.JSONField(default=dict, blank=True)
 
     bookings: QuerySet[Booking]
