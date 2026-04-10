@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import Booking, Order, Passenger
 
 
-class PassengerSerializer(serializers.ModelSerializer):
+class PassengerSerializer(serializers.ModelSerializer[Passenger]):
     """Serializer for :class:`Passenger` embedded in booking output."""
 
     class Meta:
@@ -11,7 +11,7 @@ class PassengerSerializer(serializers.ModelSerializer):
         fields = ["name", "passport_number", "gender", "birth_date"]
 
 
-class BookingSerializer(serializers.ModelSerializer):
+class BookingSerializer(serializers.ModelSerializer[Booking]):
     """Public booking representation using ``uuid``/``code``/``(car, seat)`` ids."""
 
     passenger = PassengerSerializer(read_only=True)
@@ -33,7 +33,7 @@ class BookingSerializer(serializers.ModelSerializer):
         ]
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(serializers.ModelSerializer[Order]):
     """Order with nested bookings, returned from create/retrieve endpoints."""
 
     bookings = BookingSerializer(many=True, read_only=True)

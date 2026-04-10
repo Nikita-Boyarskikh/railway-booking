@@ -1,14 +1,14 @@
 """Django admin registrations for the trains app."""
-
-from decimal import Decimal
+from typing import Any
 
 from django import forms
 from django.contrib import admin
+from django.http import HttpRequest
 
 from .models import Car, Departure, Seat, Train
 
 
-class CarInline(admin.TabularInline):
+class CarInline(admin.TabularInline[Car, Train]):
     """Inline editor for a train's cars on the train change page."""
 
     model = Car
@@ -18,14 +18,14 @@ class CarInline(admin.TabularInline):
 
 
 @admin.register(Train)
-class TrainAdmin(admin.ModelAdmin):
+class TrainAdmin(admin.ModelAdmin[Train]):
     """Admin for :class:`Train` with an inline list of cars."""
 
     inlines = [CarInline]
     list_display = ("number", "name", "route")
 
 
-class SeatInline(admin.TabularInline):
+class SeatInline(admin.TabularInline[Seat, Car]):
     """Inline editor for a car's seats on the car change page."""
 
     model = Seat
@@ -33,7 +33,7 @@ class SeatInline(admin.TabularInline):
     fields = ("number", "seat_type", "price_factor")
 
 
-class CarAdminForm(forms.ModelForm):
+class CarAdminForm(forms.ModelForm[Car]):
     """Form for :class:`Car` with a bulk seat-creation helper."""
 
     seats_to_create = forms.IntegerField(
@@ -48,14 +48,14 @@ class CarAdminForm(forms.ModelForm):
 
 
 @admin.register(Car)
-class CarAdmin(admin.ModelAdmin):
+class CarAdmin(admin.ModelAdmin[Car]):
     """Admin for :class:`Car` with inline seats and optional bulk creation."""
 
     form = CarAdminForm
     inlines = [SeatInline]
     list_display = ("number", "train", "car_type", "price_factor")
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request: HttpRequest, obj: Car, form: Any, change: Any) -> None:
         """Save the car and optionally bulk-create seats numbered ``1..N``.
 
         Skips seat numbers that already exist on the car via
@@ -66,12 +66,7 @@ class CarAdmin(admin.ModelAdmin):
         if n > 0:
             existing = set(obj.seats.values_list("number", flat=True))
             new_seats = [
-                Seat(
-                    car=obj,
-                    number=i,
-                    seat_type="common",
-                    price_factor=Decimal("1.0"),
-                )
+                Seat(car=obj, number=i)
                 for i in range(1, n + 1)
                 if i not in existing
             ]

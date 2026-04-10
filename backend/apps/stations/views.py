@@ -1,5 +1,5 @@
 """Station endpoints."""
-
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -16,7 +16,7 @@ class StationListView(APIView):
     ``apps.core.signals``.
     """
 
-    def get(self, request):
+    def get(self, request: Request) -> Response:
         """Return cached ``[{name, code}, ...]`` sorted by name."""
         data = cached_stations(
             lambda: [{"name": s.name, "code": s.code} for s in Station.objects.order_by("name")]

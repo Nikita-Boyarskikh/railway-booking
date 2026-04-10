@@ -7,6 +7,8 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator
 from django.db import migrations, models
 
+from apps.trains.models import SeatType, CarType
+
 
 class Migration(migrations.Migration):
 
@@ -47,7 +49,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.PositiveIntegerField()),
-                ('car_type', models.CharField(default='common', max_length=32)),
+                ('car_type', models.CharField(default=CarType.COMMON, choices=CarType.choices, max_length=32)),
                 ('features', models.JSONField(blank=True, default=dict)),
                 ('price_factor', models.DecimalField(decimal_places=3, default=Decimal('1.0'), max_digits=6)),
                 ('train', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cars', to='trains.train')),
@@ -62,7 +64,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.PositiveIntegerField()),
-                ('seat_type', models.CharField(default='common', max_length=32)),
+                ('seat_type', models.CharField(default=SeatType.COMMON, choices=SeatType.choices, max_length=32)),
                 ('price_factor', models.DecimalField(decimal_places=3, default=Decimal('1.0'), max_digits=6)),
                 ('car', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='seats', to='trains.car')),
             ],

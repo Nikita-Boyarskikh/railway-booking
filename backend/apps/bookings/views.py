@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -11,7 +12,7 @@ from .services import InvalidRequestError, SeatUnavailableError, create_order
 class OrderCreateView(APIView):
     """``POST /api/orders/`` — create an order with one or more bookings."""
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         """Create an order. Returns 201 on success, 409 on seat conflict, 400 on bad input."""
         data = request.data
         try:
@@ -35,7 +36,7 @@ class OrderCreateView(APIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
-class OrderDetailView(RetrieveAPIView):
+class OrderDetailView(RetrieveAPIView[Order]):
     """``GET /api/orders/{uuid}/`` — retrieve a single order by uuid."""
 
     queryset = Order.objects.all()

@@ -1,4 +1,5 @@
 from rest_framework.generics import get_object_or_404
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,7 +11,7 @@ from .services import list_seats, search_departures
 class DepartureSearchView(APIView):
     """``GET /api/departures/`` — search departures by ``from``/``to``/``date``."""
 
-    def get(self, request):
+    def get(self, request: Request) -> Response:
         """Return matching departure summaries for the validated query."""
         query = DepartureSearchQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -21,7 +22,7 @@ class DepartureSearchView(APIView):
 class DepartureSeatsView(APIView):
     """``GET /api/departures/{uuid}/seats/`` — seats grouped by car with price/status."""
 
-    def get(self, request, uuid):
+    def get(self, request: Request, uuid: str) -> Response:
         """Return seats for ``uuid`` restricted to the requested segment range."""
         query = SeatsQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)

@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
+from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Train(models.Model):
@@ -24,19 +25,29 @@ class Train(models.Model):
         return f"{self.number} {self.name}".strip()
 
 
+class CarType(models.TextChoices):
+    """Predefined types of cars, used for filtering and default pricing/features."""
+
+    COMMON = "common"
+    SLEEPER = "sleeper"
+    LUXURY = "luxury"
+    DINING = "dining"
+    OTHER = "other"
+
+
 class Car(models.Model):
     """A wagon within a train, containing numbered seats."""
 
     train = models.ForeignKey(Train, related_name="cars", on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
-    car_type = models.CharField(max_length=32, default="common")
+    car_type = models.CharField(max_length=32, default=CarType.COMMON, choices=CarType.choices)
     features = models.JSONField(default=dict, blank=True)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
 
     seats: QuerySet[Seat]
     train_id: int
 
-    class Meta:
+    class Meta(TypedModelMeta):
         unique_together = [("train", "number")]
         ordering = ["number"]
 
@@ -44,17 +55,26 @@ class Car(models.Model):
         return f"{self.train.number}/car{self.number}"
 
 
+class SeatType(models.TextChoices):
+    """Predefined types of seats, used for filtering and default pricing/features."""
+
+    COMMON = "common"
+    VIP = "vip"
+    SLEEPER = "sleeper"
+    OTHER = "other"
+
+
 class Seat(models.Model):
     """A single seat inside a car, identified publicly by ``(car, number)``."""
 
     car = models.ForeignKey(Car, related_name="seats", on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
-    seat_type = models.CharField(max_length=32, default="common")
+    seat_type = models.CharField(max_length=32, default=SeatType.COMMON, choices=SeatType.choices)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
 
     car_id: int
 
-    class Meta:
+    class Meta(TypedModelMeta):
         unique_together = [("car", "number")]
         ordering = ["number"]
 
@@ -72,7 +92,7 @@ class Departure(models.Model):
 
     train_id: int
 
-    class Meta:
+    class Meta(TypedModelMeta):
         ordering = ["date", "departure_time"]
 
     def __str__(self) -> str:
