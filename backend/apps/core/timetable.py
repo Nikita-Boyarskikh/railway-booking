@@ -3,9 +3,11 @@ from decimal import Decimal
 
 
 def compute_timetable(departure) -> list[dict]:
-    """
-    Return list of {station_id, station_name, arrival_time, departure_time}
-    for each stop along the route, computed from train avg speed and stop durations.
+    """Return stop list for ``departure``.
+
+    Each entry is a ``{station_id, station_name, arrival_time, departure_time}``
+    dict. Times are ISO strings truncated to minutes. Computed from the train's
+    average speed and the per-segment stop durations defined on ``RouteSegment``.
     """
     train = departure.train
     route_segments = list(
@@ -51,23 +53,11 @@ def compute_timetable(departure) -> list[dict]:
 
 
 def find_route_orders(route, station_from_id: int, station_to_id: int) -> tuple[int, int] | None:
+    """Return ``(from_order, to_order)`` covering the trip, or ``None``.
+
+    Thin wrapper around :func:`apps.core.availability.resolve_station_range`
+    kept for backwards compatibility with older call sites.
     """
-    Return (from_order, to_order) such that the segments with order in [from_order, to_order)
-    cover the trip from station_from_id to station_to_id along route. None if not found.
-    """
-    rss = list(route.route_segments.select_related("segment").order_by("order"))
-    from_order = None
-    for rs in rss:
-        if rs.segment.station_from_id == station_from_id:
-            from_order = rs.order
-            break
-    if from_order is None:
-        return None
-    to_order = None
-    for rs in rss:
-        if rs.order >= from_order and rs.segment.station_to_id == station_to_id:
-            to_order = rs.order + 1
-            break
-    if to_order is None:
-        return None
-    return from_order, to_order
+    from apps.core.availability import resolve_station_range
+
+    return resolve_station_range(route, station_from_id, station_to_id)

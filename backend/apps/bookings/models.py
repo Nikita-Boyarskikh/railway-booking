@@ -6,11 +6,15 @@ from django.db import models
 
 
 class Gender(models.TextChoices):
+    """Passenger gender choices."""
+
     MALE = auto()
     FEMALE = auto()
 
 
 class Passenger(models.Model):
+    """A person travelling on one booking (name, passport, gender, DOB)."""
+
     name = models.CharField(max_length=255)
     passport_number = models.CharField(max_length=64)
     gender = models.CharField(max_length=8, choices=Gender.choices)
@@ -21,6 +25,8 @@ class Passenger(models.Model):
 
 
 class Order(models.Model):
+    """A customer order grouping one or more bookings for a single departure."""
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     total_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
@@ -31,6 +37,8 @@ class Order(models.Model):
 
 
 class Booking(models.Model):
+    """One seat reserved on one departure for one boarding→alighting range."""
+
     order = models.ForeignKey(Order, related_name="bookings", on_delete=models.CASCADE)
     departure = models.ForeignKey("trains.Departure", on_delete=models.PROTECT)
     seat = models.ForeignKey("trains.Seat", on_delete=models.PROTECT)

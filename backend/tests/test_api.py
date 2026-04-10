@@ -22,9 +22,7 @@ def test_full_flow(demo_data):
     assert deps[0]["uuid"] == str(d["departure"].uuid)
 
     # seats
-    r = client.get(
-        f"/api/departures/{d['departure'].uuid}/seats/?from={s[0].code}&to={s[3].code}"
-    )
+    r = client.get(f"/api/departures/{d['departure'].uuid}/seats/?from={s[0].code}&to={s[3].code}")
     assert r.status_code == 200
     cars = r.json()["cars"]
     assert len(cars) == 1

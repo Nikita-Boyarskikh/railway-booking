@@ -5,6 +5,8 @@ from django.db import models
 
 
 class Route(models.Model):
+    """An ordered chain of :class:`~apps.stations.models.Segment` forming a full path."""
+
     name = models.CharField(max_length=128)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("1.0"))
     features = models.JSONField(default=dict, blank=True)
@@ -14,6 +16,8 @@ class Route(models.Model):
 
 
 class RouteSegment(models.Model):
+    """A segment's position inside a route with optional stop duration."""
+
     route = models.ForeignKey(Route, related_name="route_segments", on_delete=models.CASCADE)
     segment = models.ForeignKey("stations.Segment", on_delete=models.PROTECT)
     order = models.PositiveIntegerField()

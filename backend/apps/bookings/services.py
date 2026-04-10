@@ -1,3 +1,5 @@
+"""Service layer for the bookings app: order creation and validation."""
+
 from decimal import Decimal
 
 from django.db import transaction
@@ -12,16 +14,16 @@ from .models import Booking, Order, Passenger
 
 
 class SeatUnavailableError(Exception):
+    """Raised when a requested seat was taken between validation and commit."""
+
     def __init__(self, car_number: int, seat_number: int):
-        super().__init__(
-            f"Seat car={car_number} seat={seat_number} no longer available"
-        )
+        super().__init__(f"Seat car={car_number} seat={seat_number} no longer available")
         self.car_number = car_number
         self.seat_number = seat_number
 
 
 class InvalidRequestError(Exception):
-    pass
+    """Raised for client-side errors during order creation (maps to 400)."""
 
 
 @transaction.atomic
@@ -31,6 +33,22 @@ def create_order(
     station_to_code: str,
     items: list[dict],
 ) -> Order:
+    """Create an :class:`Order` with one :class:`Booking` per ``item``.
+
+    Runs inside a single transaction and takes a row-level lock on each
+    selected :class:`~apps.trains.models.Seat` to prevent double-booking.
+
+    Args:
+        departure_uuid: UUID of the target departure.
+        station_from_code: Boarding station code.
+        station_to_code: Alighting station code.
+        items: List of dicts with ``car_number``, ``seat_number`` and passenger
+            fields (``passenger_name``/``_passport``/``_gender``/``_birth_date``).
+
+    Raises:
+        InvalidRequestError: On malformed input or unknown references.
+        SeatUnavailableError: If a requested seat is already booked for the range.
+    """
     if not items:
         raise InvalidRequestError("items must not be empty")
     if station_from_code == station_to_code:
@@ -42,8 +60,7 @@ def create_order(
         raise InvalidRequestError("Departure not found") from e
 
     stations = {
-        s.code: s
-        for s in Station.objects.filter(code__in=[station_from_code, station_to_code])
+        s.code: s for s in Station.objects.filter(code__in=[station_from_code, station_to_code])
     }
     station_from = stations.get(station_from_code)
     station_to = stations.get(station_to_code)

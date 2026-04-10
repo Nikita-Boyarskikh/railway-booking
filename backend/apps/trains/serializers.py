@@ -2,11 +2,14 @@ from rest_framework import serializers
 
 
 class DepartureSearchQuerySerializer(serializers.Serializer):
+    """Query-string validator for the departure-search endpoint."""
+
     from_code = serializers.CharField()
     to_code = serializers.CharField()
     date = serializers.DateField()
 
     def to_internal_value(self, data):
+        """Remap public ``from``/``to`` params to internal field names."""
         return super().to_internal_value(
             {
                 "from_code": data.get("from"),
@@ -17,10 +20,13 @@ class DepartureSearchQuerySerializer(serializers.Serializer):
 
 
 class SeatsQuerySerializer(serializers.Serializer):
+    """Query-string validator for the seat-listing endpoint."""
+
     from_code = serializers.CharField()
     to_code = serializers.CharField()
 
     def to_internal_value(self, data):
+        """Remap public ``from``/``to`` params to internal field names."""
         return super().to_internal_value(
             {
                 "from_code": data.get("from"),

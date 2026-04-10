@@ -1,15 +1,26 @@
+"""Service layer for the trains app.
+
+Covers departure search and seat listing. Keeps all business logic out of
+views and serializers so it can be tested and reused.
+"""
+
+from __future__ import annotations
+
 from datetime import date as date_cls
 from decimal import Decimal
 
-from apps.core.availability import free_seat_ids
-from apps.core.pricing import calc_booking_price
-from apps.core.timetable import compute_timetable, find_route_orders
+from constance import config
+
+from apps.core.availability import free_seat_ids, resolve_station_range
+from apps.core.pricing import calc_segment_range_subtotal
+from apps.core.timetable import compute_timetable
 from apps.stations.models import Station
 
 from .models import Departure
 
 
 def _resolve_codes(from_code: str, to_code: str) -> tuple[int, int] | None:
+    """Return ``(from_id, to_id)`` for two station codes, or ``None``."""
     stations = {s.code: s for s in Station.objects.filter(code__in=[from_code, to_code])}
     f = stations.get(from_code)
     t = stations.get(to_code)
@@ -18,17 +29,45 @@ def _resolve_codes(from_code: str, to_code: str) -> tuple[int, int] | None:
     return f.id, t.id
 
 
+def _price_seat(
+    base_price: Decimal,
+    subtotal: Decimal,
+    route_pf: Decimal,
+    train_pf: Decimal,
+    car_pf: Decimal,
+    seat_pf: Decimal,
+) -> Decimal:
+    """Compute a per-seat booking price from pre-hoisted subtotal/factors."""
+    multiplied = subtotal * route_pf * train_pf * car_pf * seat_pf
+    return (base_price + multiplied).quantize(Decimal("0.01"))
+
+
 def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
+    """Return summary dicts for all departures serving ``from_code``→``to_code`` on a date.
+
+    Each result carries the departure uuid, train number/name, boarding and
+    alighting times, the count of seats still free for the requested segment
+    range, and the minimum booking price across those free seats.
+    """
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
         return []
     from_id, to_id = resolved
 
+    base_price = Decimal(config.BASE_PRICE)
     results: list[dict] = []
-    qs = Departure.objects.filter(date=on_date).select_related("train__route")
+    qs = (
+        Departure.objects.filter(date=on_date)
+        .select_related("train__route")
+        .prefetch_related(
+            "train__route__route_segments__segment__station_from",
+            "train__route__route_segments__segment__station_to",
+            "train__cars__seats",
+        )
+    )
     for dep in qs:
         route = dep.train.route
-        rng = find_route_orders(route, from_id, to_id)
+        rng = resolve_station_range(route, from_id, to_id)
         if not rng:
             continue
         from_order, to_order = rng
@@ -42,14 +81,21 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[d
         free_ids = free_seat_ids(dep, from_order, to_order)
         free_count = len(free_ids)
 
-        min_price: Decimal | None = None
-        from .models import Seat as SeatModel
+        subtotal = calc_segment_range_subtotal(route, from_order, to_order)
+        route_pf = Decimal(route.price_factor)
+        train_pf = Decimal(dep.train.price_factor)
 
-        seats = SeatModel.objects.filter(id__in=free_ids).select_related("car__train__route")
-        for s in seats:
-            p = calc_booking_price(route, dep.train, s.car, s, from_order, to_order)
-            if min_price is None or p < min_price:
-                min_price = p
+        min_price: Decimal | None = None
+        for car in dep.train.cars.all():
+            car_pf = Decimal(car.price_factor)
+            for seat in car.seats.all():
+                if seat.id not in free_ids:
+                    continue
+                p = _price_seat(
+                    base_price, subtotal, route_pf, train_pf, car_pf, Decimal(seat.price_factor)
+                )
+                if min_price is None or p < min_price:
+                    min_price = p
 
         results.append(
             {
@@ -66,24 +112,33 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[d
 
 
 def list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
+    """Return seats for ``departure`` grouped by car with per-seat price/status."""
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
         return {"cars": []}
     from_id, to_id = resolved
 
     route = departure.train.route
-    rng = find_route_orders(route, from_id, to_id)
+    rng = resolve_station_range(route, from_id, to_id)
     if not rng:
         return {"cars": []}
     from_order, to_order = rng
 
     free_ids = free_seat_ids(departure, from_order, to_order)
 
+    base_price = Decimal(config.BASE_PRICE)
+    subtotal = calc_segment_range_subtotal(route, from_order, to_order)
+    route_pf = Decimal(route.price_factor)
+    train_pf = Decimal(departure.train.price_factor)
+
     cars_out = []
     for car in departure.train.cars.all().prefetch_related("seats"):
+        car_pf = Decimal(car.price_factor)
         seats_out = []
         for seat in car.seats.all():
-            price = calc_booking_price(route, departure.train, car, seat, from_order, to_order)
+            price = _price_seat(
+                base_price, subtotal, route_pf, train_pf, car_pf, Decimal(seat.price_factor)
+            )
             seats_out.append(
                 {
                     "number": seat.number,

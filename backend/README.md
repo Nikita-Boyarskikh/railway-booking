@@ -30,7 +30,18 @@ backend/
 └── Dockerfile
 ```
 
-Business logic lives in `services.py` modules per app.
+Business logic lives in `services.py` modules per app. Performance-sensitive
+helpers (`apps/core/availability.py`, `apps/core/pricing.py`) read from
+prefetched `Route.route_segments` where available and fall back to a single
+`select_related` query otherwise, so departure-search query count stays
+constant regardless of booking volume — see `tests/test_queries.py` for the
+regression ceiling.
+
+The `Car` admin (`apps/trains/admin.py`) exposes a `seats_to_create` bulk
+helper: set it on the car change form to create seats numbered `1..N`
+(skipping existing numbers) in a single `bulk_create` call. Seats can also
+be edited inline on the car page, and cars are still editable inline on
+the train page.
 
 ## Setup (local)
 

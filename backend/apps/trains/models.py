@@ -5,6 +5,8 @@ from django.db import models
 
 
 class Train(models.Model):
+    """A train assigned to a route, with an average speed and price factor."""
+
     route = models.ForeignKey("routes.Route", related_name="trains", on_delete=models.PROTECT)
     number = models.CharField(max_length=16, unique=True, db_index=True)
     name = models.CharField(max_length=128, blank=True, default="")
@@ -17,6 +19,8 @@ class Train(models.Model):
 
 
 class Car(models.Model):
+    """A wagon within a train, containing numbered seats."""
+
     train = models.ForeignKey(Train, related_name="cars", on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
     car_type = models.CharField(max_length=32, default="common")
@@ -32,6 +36,8 @@ class Car(models.Model):
 
 
 class Seat(models.Model):
+    """A single seat inside a car, identified publicly by ``(car, number)``."""
+
     car = models.ForeignKey(Car, related_name="seats", on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
     seat_type = models.CharField(max_length=32, default="common")
@@ -46,6 +52,8 @@ class Seat(models.Model):
 
 
 class Departure(models.Model):
+    """A specific run of a :class:`Train` on a given date and start time."""
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     train = models.ForeignKey(Train, related_name="departures", on_delete=models.CASCADE)
     date = models.DateField()
