@@ -82,6 +82,6 @@ docker compose exec frontend bun run lint
 
 ## Stack
 
-- **Backend**: Python 3.14 + Django 6.0 + DRF + PostgreSQL 18
+- **Backend**: Python 3.14 + Django 6.0 + DRF + PostgreSQL 18 + Redis 8 (cache)
 - **Frontend**: React 19 + Vite + Tailwind 4 + React Router
 - **Infra**: Docker Compose, Nginx

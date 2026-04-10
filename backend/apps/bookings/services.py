@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from apps.core.availability import seat_is_free
+from apps.core.cache import bump_departure_generation
 from apps.core.pricing import calc_booking_price
 from apps.core.timetable import find_route_orders
 from apps.stations.models import Station
@@ -125,4 +126,9 @@ def create_order(
 
     order.total_price = total
     order.save(update_fields=["total_price"])
+
+    # Invalidate cached seat maps for this departure once the booking commits.
+    dep_uuid = str(departure.uuid)
+    transaction.on_commit(lambda: bump_departure_generation(dep_uuid))
+
     return order

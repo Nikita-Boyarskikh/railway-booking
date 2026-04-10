@@ -10,6 +10,7 @@ Django 6 + DRF API for the railway booking prototype.
 - Gunicorn (prod), Django dev server (local)
 - [uv](https://docs.astral.sh/uv/) for dependency management
 - [django-constance](https://django-constance.readthedocs.io/) for runtime, admin-editable configuration (e.g. `BASE_PRICE`)
+- Redis (via Django's built-in `RedisCache` backend) for response caching
 - ruff (lint + format), pytest + pytest-django
 
 ## Structure
@@ -42,6 +43,19 @@ helper: set it on the car change form to create seats numbered `1..N`
 (skipping existing numbers) in a single `bulk_create` call. Seats can also
 be edited inline on the car page, and cars are still editable inline on
 the train page.
+
+### Caching layer
+
+Response caching lives in `apps/core/cache.py` and uses Django's cache
+framework (Redis in compose via `REDIS_URL`, `LocMemCache` in tests):
+
+| Key | What | TTL | Invalidation |
+|---|---|---|---|
+| `stations:all` | `GET /api/stations/` response | 1 day | `post_save`/`post_delete` signal on `Station` |
+| `search:{from}:{to}:{date}` | `search_departures` output | 30 s | TTL-only; a short window of stale free counts is acceptable |
+| `seats:{uuid}:{from}:{to}:g{gen}` | `list_seats` output | 60 s | Generation counter `dep:gen:{uuid}` bumped by `create_order` via `transaction.on_commit` — stale keys orphan and die on TTL |
+
+Signals are wired in `apps/core/apps.py:CoreConfig.ready()`.
 
 ## Setup (local)
 

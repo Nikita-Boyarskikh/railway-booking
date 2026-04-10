@@ -247,6 +247,7 @@ The HTTP API never exposes internal integer primary keys. Public identifiers are
 - **Backend**: Python 3.14, Django 6.0, Django REST Framework, Gunicorn, uv (dependency management)
 - **Frontend**: TypeScript, React 19, Vite, Tailwind CSS 4, React Router, Bun (package manager & runtime)
 - **Database**: PostgreSQL 18
+- **Cache**: Redis 8 (Django's built-in `RedisCache` backend)
 - **Infrastructure**: Docker Compose, Nginx
 - **Code quality**: ruff (PEP8), pytest, ESLint (Airbnb style)
 - **Language**: English (code, docs, API)
@@ -285,6 +286,7 @@ railway-booking/
 ## Architecture Decisions
 
 - **Service layer**: business logic (pricing, availability checks) lives in `services.py` within each app, not in views or serializers
+- **Caching**: response-level cache in `apps/core/cache.py` — stations list (`stations:all`, signal-invalidated), `search_departures` (TTL 30 s), and `list_seats` (keyed by a per-departure generation counter bumped in `transaction.on_commit` from `create_order`). Design doc: `docs/PERF_PLAN.md`
 - **Timetable computation**: utility in `core` app that takes a Departure and returns `[{station, arrival_time, departure_time}, ...]`
 - **No state management library**: React local state + URL params, data fetched per page
 - **Nginx**: single container (frontend) serves built React static files and proxies `/api/` to the backend (gunicorn)

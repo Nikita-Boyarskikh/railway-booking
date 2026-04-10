@@ -1,11 +1,24 @@
-from rest_framework import generics
+"""Station endpoints."""
+
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.core.cache import cached_stations
 
 from .models import Station
-from .serializers import StationSerializer
 
 
-class StationListView(generics.ListAPIView):
-    """``GET /api/stations/`` — list all stations alphabetically by name."""
+class StationListView(APIView):
+    """``GET /api/stations/`` — list all stations alphabetically by name.
 
-    queryset = Station.objects.all().order_by("name")
-    serializer_class = StationSerializer
+    The response is cached under ``stations:all`` and invalidated by signal
+    whenever a :class:`Station` row changes. See ``apps.core.cache`` and
+    ``apps.core.signals``.
+    """
+
+    def get(self, request):
+        """Return cached ``[{name, code}, ...]`` sorted by name."""
+        data = cached_stations(
+            lambda: list(Station.objects.order_by("name").values("name", "code"))
+        )
+        return Response(data)

@@ -12,6 +12,7 @@ from decimal import Decimal
 from constance import config
 
 from apps.core.availability import free_seat_ids, resolve_station_range
+from apps.core.cache import cached_list_seats, cached_search_departures
 from apps.core.pricing import calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
 from apps.stations.models import Station
@@ -45,10 +46,19 @@ def _price_seat(
 def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
     """Return summary dicts for all departures serving ``from_code``→``to_code`` on a date.
 
-    Each result carries the departure uuid, train number/name, boarding and
-    alighting times, the count of seats still free for the requested segment
-    range, and the minimum booking price across those free seats.
+    Cached under ``search:{from}:{to}:{date}`` for a short TTL (see
+    :mod:`apps.core.cache`); free-seat counts may be stale by up to the TTL.
     """
+    return cached_search_departures(
+        from_code,
+        to_code,
+        on_date.isoformat(),
+        loader=lambda: _search_departures(from_code, to_code, on_date),
+    )
+
+
+def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
+    """Uncached implementation of :func:`search_departures`."""
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
         return []
@@ -112,7 +122,22 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[d
 
 
 def list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
-    """Return seats for ``departure`` grouped by car with per-seat price/status."""
+    """Return seats for ``departure`` grouped by car with per-seat price/status.
+
+    Response cached per ``(departure_uuid, from, to, generation)`` — bookings
+    bump the generation so cached entries orphan immediately. See
+    :mod:`apps.core.cache`.
+    """
+    return cached_list_seats(
+        str(departure.uuid),
+        from_code,
+        to_code,
+        loader=lambda: _list_seats(departure, from_code, to_code),
+    )
+
+
+def _list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
+    """Uncached implementation of :func:`list_seats`."""
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
         return {"cars": []}
