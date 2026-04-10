@@ -15,6 +15,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "django-stubs>=6.0.2",
+    "mypy>=1.20.0",
     "psycopg[binary,pool]>=3.2",
     "pytest>=8.3",
     "pytest-django>=4.9",
@@ -89,3 +91,37 @@ filterwarnings = [
 markers = [
     "slow: marks tests as slow",
 ]
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "."
+plugins = ["mypy_django_plugin.main"]
+strict = true
+warn_unreachable = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+warn_return_any = true
+exclude = ["migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["constance.*", "rest_framework.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "apps.*.views",
+    "apps.*.serializers",
+    "apps.*.admin",
+]
+disallow_subclassing_any = false
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["apps.*.admin", "apps.routes.admin"]
+disable_error_code = ["type-arg"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings_test"

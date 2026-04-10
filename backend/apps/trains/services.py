@@ -4,17 +4,14 @@ Covers departure search and seat listing. Keeps all business logic out of
 views and serializers so it can be tested and reused.
 """
 
-from __future__ import annotations
-
 from datetime import date as date_cls
 from decimal import Decimal
 
-from constance import config
-
 from apps.core.availability import free_seat_ids, resolve_station_range
 from apps.core.cache import cached_list_seats, cached_search_departures
-from apps.core.pricing import calc_segment_range_subtotal
+from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
+from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse
 from apps.stations.models import Station
 
 from .models import Departure
@@ -30,21 +27,8 @@ def _resolve_codes(from_code: str, to_code: str) -> tuple[int, int] | None:
     return f.id, t.id
 
 
-def _price_seat(
-    base_price: Decimal,
-    subtotal: Decimal,
-    route_pf: Decimal,
-    train_pf: Decimal,
-    car_pf: Decimal,
-    seat_pf: Decimal,
-) -> Decimal:
-    """Compute a per-seat booking price from pre-hoisted subtotal/factors."""
-    multiplied = subtotal * route_pf * train_pf * car_pf * seat_pf
-    return (base_price + multiplied).quantize(Decimal("0.01"))
-
-
-def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
-    """Return summary dicts for all departures serving ``from_code``→``to_code`` on a date.
+def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[DepartureSummary]:
+    """Return departure summaries serving ``from_code``→``to_code`` on a date.
 
     Cached under ``search:{from}:{to}:{date}`` for a short TTL (see
     :mod:`apps.core.cache`); free-seat counts may be stale by up to the TTL.
@@ -57,15 +41,14 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[d
     )
 
 
-def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[dict]:
+def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[DepartureSummary]:
     """Uncached implementation of :func:`search_departures`."""
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
         return []
     from_id, to_id = resolved
 
-    base_price = Decimal(config.BASE_PRICE)
-    results: list[dict] = []
+    results: list[DepartureSummary] = []
     qs = (
         Departure.objects.filter(date=on_date)
         .select_related("train__route")
@@ -92,18 +75,13 @@ def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[
         free_count = len(free_ids)
 
         subtotal = calc_segment_range_subtotal(route, from_order, to_order)
-        route_pf = Decimal(route.price_factor)
-        train_pf = Decimal(dep.train.price_factor)
 
         min_price: Decimal | None = None
         for car in dep.train.cars.all():
-            car_pf = Decimal(car.price_factor)
             for seat in car.seats.all():
                 if seat.id not in free_ids:
                     continue
-                p = _price_seat(
-                    base_price, subtotal, route_pf, train_pf, car_pf, Decimal(seat.price_factor)
-                )
+                p = calc_booking_price(subtotal, seat)
                 if min_price is None or p < min_price:
                     min_price = p
 
@@ -121,7 +99,7 @@ def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[
     return results
 
 
-def list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
+def list_seats(departure: Departure, from_code: str, to_code: str) -> SeatsResponse:
     """Return seats for ``departure`` grouped by car with per-seat price/status.
 
     Response cached per ``(departure_uuid, from, to, generation)`` — bookings
@@ -136,7 +114,7 @@ def list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
     )
 
 
-def _list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
+def _list_seats(departure: Departure, from_code: str, to_code: str) -> SeatsResponse:
     """Uncached implementation of :func:`list_seats`."""
     resolved = _resolve_codes(from_code, to_code)
     if not resolved:
@@ -151,33 +129,27 @@ def _list_seats(departure: Departure, from_code: str, to_code: str) -> dict:
 
     free_ids = free_seat_ids(departure, from_order, to_order)
 
-    base_price = Decimal(config.BASE_PRICE)
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
-    route_pf = Decimal(route.price_factor)
-    train_pf = Decimal(departure.train.price_factor)
 
-    cars_out = []
+    cars_out: list[CarDict] = []
     for car in departure.train.cars.all().prefetch_related("seats"):
-        car_pf = Decimal(car.price_factor)
-        seats_out = []
+        seats_out: list[SeatDict] = []
         for seat in car.seats.all():
-            price = _price_seat(
-                base_price, subtotal, route_pf, train_pf, car_pf, Decimal(seat.price_factor)
-            )
+            price = calc_booking_price(subtotal, seat)
             seats_out.append(
-                {
-                    "number": seat.number,
-                    "seat_type": seat.seat_type,
-                    "status": "free" if seat.id in free_ids else "occupied",
-                    "price": str(price),
-                }
+                SeatDict(
+                    number=seat.number,
+                    seat_type=seat.seat_type,
+                    status="free" if seat.id in free_ids else "occupied",
+                    price=str(price),
+                )
             )
         cars_out.append(
-            {
-                "number": car.number,
-                "car_type": car.car_type,
-                "features": car.features,
-                "seats": seats_out,
-            }
+            CarDict(
+                number=car.number,
+                car_type=car.car_type,
+                features=car.features,
+                seats=seats_out,
+            )
         )
-    return {"cars": cars_out}
+    return SeatsResponse(cars=cars_out)

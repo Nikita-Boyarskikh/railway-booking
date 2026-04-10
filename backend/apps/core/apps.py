@@ -6,6 +6,6 @@ class CoreConfig(AppConfig):
 
     name = "apps.core"
 
-    def ready(self):
+    def ready(self) -> None:
         """Wire up cache-invalidation signals on startup."""
         from . import signals  # noqa: F401

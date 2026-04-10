@@ -1,13 +1,14 @@
 """Service layer for the bookings app: order creation and validation."""
 
+import uuid as uuid_mod
 from decimal import Decimal
 
 from django.db import transaction
 
-from apps.core.availability import seat_is_free
+from apps.core.availability import resolve_station_range, seat_is_free
 from apps.core.cache import bump_departure_generation
-from apps.core.pricing import calc_booking_price
-from apps.core.timetable import find_route_orders
+from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
+from apps.core.types import OrderItemInput
 from apps.stations.models import Station
 from apps.trains.models import Departure, Seat
 
@@ -29,10 +30,10 @@ class InvalidRequestError(Exception):
 
 @transaction.atomic
 def create_order(
-    departure_uuid,
+    departure_uuid: str | uuid_mod.UUID,
     station_from_code: str,
     station_to_code: str,
-    items: list[dict],
+    items: list[OrderItemInput],
 ) -> Order:
     """Create an :class:`Order` with one :class:`Booking` per ``item``.
 
@@ -69,7 +70,7 @@ def create_order(
         raise InvalidRequestError("Unknown station code")
 
     route = departure.train.route
-    rng = find_route_orders(route, station_from.id, station_to.id)
+    rng = resolve_station_range(route, station_from.id, station_to.id)
     if not rng:
         raise InvalidRequestError(
             "Route does not cover the requested station_from → station_to segment"
@@ -103,7 +104,7 @@ def create_order(
                 f"Seat car={car_number} seat={seat_number} not found on this train"
             ) from e
 
-        if not seat_is_free(departure, seat.id, from_order, to_order):
+        if not seat_is_free(departure, seat.pk, from_order, to_order):
             raise SeatUnavailableError(car_number, seat_number)
 
         passenger = Passenger.objects.create(
@@ -122,7 +123,8 @@ def create_order(
             passenger=passenger,
         )
 
-        total += calc_booking_price(route, departure.train, seat.car, seat, from_order, to_order)
+        subtotal = calc_segment_range_subtotal(route, from_order, to_order)
+        total += calc_booking_price(subtotal, seat)
 
     order.total_price = total
     order.save(update_fields=["total_price"])

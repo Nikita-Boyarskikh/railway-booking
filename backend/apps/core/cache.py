@@ -16,8 +16,6 @@ shares its invalidation model but caches whole response dicts instead of
 individual bit vectors.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 
 from django.core.cache import cache
@@ -34,7 +32,7 @@ _SEATS_TMPL = "seats:{uuid}:{from_}:{to}:g{gen}"
 
 def _get_or_set[T](key: str, loader: Callable[[], T], timeout: int) -> T:
     """Get ``key`` from the cache, populating via ``loader`` on miss."""
-    hit = cache.get(key)
+    hit: T | None = cache.get(key)
     if hit is not None:
         return hit
     value = loader()
@@ -47,7 +45,7 @@ def _get_or_set[T](key: str, loader: Callable[[], T], timeout: int) -> T:
 # ---------------------------------------------------------------------------
 
 
-def cached_stations(loader: Callable[[], list[dict]]) -> list[dict]:
+def cached_stations(loader: Callable[[], list[dict[str, str]]]) -> list[dict[str, str]]:
     """Return the station list, populating the cache on miss."""
     return _get_or_set(STATIONS_KEY, loader, STATIONS_TTL)
 
@@ -68,7 +66,8 @@ def _gen_key(departure_uuid: str) -> str:
 
 def get_departure_generation(departure_uuid: str) -> int:
     """Return the current generation counter for ``departure_uuid`` (0 if unset)."""
-    return cache.get(_gen_key(departure_uuid), 0)
+    val: int = cache.get(_gen_key(departure_uuid), 0)
+    return val
 
 
 def bump_departure_generation(departure_uuid: str) -> int:
@@ -90,12 +89,12 @@ def bump_departure_generation(departure_uuid: str) -> int:
 # ---------------------------------------------------------------------------
 
 
-def cached_search_departures(
+def cached_search_departures[T](
     from_code: str,
     to_code: str,
     date_iso: str,
-    loader: Callable[[], list[dict]],
-) -> list[dict]:
+    loader: Callable[[], T],
+) -> T:
     """Cache the full ``search_departures`` response for ``SEARCH_TTL`` seconds."""
     key = _SEARCH_TMPL.format(from_=from_code, to=to_code, date=date_iso)
     return _get_or_set(key, loader, SEARCH_TTL)
@@ -106,12 +105,12 @@ def cached_search_departures(
 # ---------------------------------------------------------------------------
 
 
-def cached_list_seats(
+def cached_list_seats[T](
     departure_uuid: str,
     from_code: str,
     to_code: str,
-    loader: Callable[[], dict],
-) -> dict:
+    loader: Callable[[], T],
+) -> T:
     """Cache ``list_seats`` for this ``(departure, from, to)`` at the current generation."""
     gen = get_departure_generation(departure_uuid)
     key = _SEATS_TMPL.format(uuid=departure_uuid, from_=from_code, to=to_code, gen=gen)

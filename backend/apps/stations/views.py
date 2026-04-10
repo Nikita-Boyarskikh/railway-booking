@@ -19,6 +19,6 @@ class StationListView(APIView):
     def get(self, request):
         """Return cached ``[{name, code}, ...]`` sorted by name."""
         data = cached_stations(
-            lambda: list(Station.objects.order_by("name").values("name", "code"))
+            lambda: [{"name": s.name, "code": s.code} for s in Station.objects.order_by("name")]
         )
         return Response(data)

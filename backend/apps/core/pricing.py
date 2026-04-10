@@ -13,38 +13,45 @@ multiplied by any factor.
 from decimal import Decimal
 
 from constance import config
+from django.db.models import QuerySet
+
+from apps.core.db_utils import use_prefetched_if_available
+from apps.routes.models import Route, RouteSegment
+from apps.trains.models import Seat
 
 
-def calc_segment_range_subtotal(route, from_order: int, to_order: int) -> Decimal:
-    """Return ``sum(segment.base_price)`` for orders in ``[from_order, to_order)``.
-
-    If ``route.route_segments`` has already been prefetched (together with the
-    ``segment`` FK) the sum is computed in Python with no extra query.
+def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) -> Decimal:
     """
-    # Use the prefetch cache if present (search_departures warms it);
-    # otherwise fall back to a single ``select_related`` query.
-    if "route_segments" in getattr(route, "_prefetched_objects_cache", {}):
-        rss = route.route_segments.all()
-    else:
-        rss = route.route_segments.select_related("segment")
+    Return ``sum(segment.base_price)`` for orders in ``[from_order, to_order)``.
+
+    Uses prefetched ``route_segments`` if available to avoid extra DB queries.
+    The base price is the only component of the booking price that depends on
+    the segment range, so this function is separate from :func:`calc_booking_price`.
+    This allows caching the subtotal for a route and segment range independently
+    of the seat/booking-specific factors applied in :func:`calc_booking_price`.
+    """
+    rss: QuerySet[RouteSegment] = use_prefetched_if_available(
+        route, "route_segments", lambda qs: qs.select_related("segment")
+    )
     return sum(
         (rs.segment.base_price for rs in rss if from_order <= rs.order < to_order),
         Decimal("0"),
     )
 
 
-def calc_booking_price(route, train, car, seat, from_order: int, to_order: int) -> Decimal:
-    """Return the final price for one seat over a segment range.
+def calc_booking_price(subtotal: Decimal, seat: Seat) -> Decimal:
+    """Return the final price for one seat on a booking with a given segment range subtotal.
 
-    Uses :func:`calc_segment_range_subtotal` then applies the route/train/car/
-    seat price factors and adds the unmultiplied constance ``BASE_PRICE``.
+    NOTE: Use :func:`calc_segment_range_subtotal` to get subtotal from a route and segment range.
+     This function only applies the route/train/car/seat price factors
+     and adds the unmultiplied constance ``BASE_PRICE``.
     """
-    subtotal = calc_segment_range_subtotal(route, from_order, to_order)
     multiplied = (
         subtotal
-        * Decimal(route.price_factor)
-        * Decimal(train.price_factor)
-        * Decimal(car.price_factor)
-        * Decimal(seat.price_factor)
+        * seat.car.train.route.price_factor
+        * seat.car.train.price_factor
+        * seat.car.price_factor
+        * seat.price_factor
     )
-    return (Decimal(config.BASE_PRICE) + multiplied).quantize(Decimal("0.01"))
+    base: Decimal = Decimal(str(config.BASE_PRICE))
+    return (base + multiplied).quantize(Decimal("0.01"))

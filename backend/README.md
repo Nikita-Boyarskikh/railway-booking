@@ -11,7 +11,7 @@ Django 6 + DRF API for the railway booking prototype.
 - [uv](https://docs.astral.sh/uv/) for dependency management
 - [django-constance](https://django-constance.readthedocs.io/) for runtime, admin-editable configuration (e.g. `BASE_PRICE`)
 - Redis (via Django's built-in `RedisCache` backend) for response caching
-- ruff (lint + format), pytest + pytest-django
+- ruff (lint + format), mypy + django-stubs (strict type checking), pytest + pytest-django
 
 ## Structure
 
@@ -89,6 +89,7 @@ API: http://localhost:8000/api/ — admin: http://localhost:8000/admin/
 | Lint                 | `uv run ruff check .`                                 |
 | Lint + autofix       | `uv run ruff check --fix .`                           |
 | Format               | `uv run ruff format .`                                |
+| Type check           | `uv run mypy apps/ config/`                           |
 
 ## Docker
 
