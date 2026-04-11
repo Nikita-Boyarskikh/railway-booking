@@ -23,7 +23,9 @@ dev = [
     "mypy>=1.20.0",
     "psycopg[binary,pool]>=3.2",
     "pytest>=8.3",
+    "pytest-cov>=7.1.0",
     "pytest-django>=4.9",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.7",
 ]
 
@@ -88,12 +90,34 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--tb=short",
+    "--cov=apps",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=90",
 ]
 filterwarnings = [
     "error",
 ]
 markers = [
     "slow: marks tests as slow",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["apps"]
+omit = [
+    "*/migrations/*",
+    "*/admin.py",
+    "config/*",
+    "manage.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "def __str__",
 ]
 
 # ---------------------------------------------------------------------------
@@ -116,6 +140,14 @@ exclude = ["migrations/"]
 [[tool.mypy.overrides]]
 module = ["constance.*", "rest_framework.*"]
 ignore_missing_imports = true
+
+# MoneyField from django-money is a composite field (amount + currency) that the
+# django-stubs plugin cannot introspect at analysis time, so models that use it
+# get spurious `django-manager-missing` errors. Disable that one error code for
+# the affected modules.
+[[tool.mypy.overrides]]
+module = ["apps.bookings.models", "apps.stations.models"]
+disable_error_code = ["django-manager-missing"]
 
 [tool.django-stubs]
 django_settings_module = "config.settings_test"

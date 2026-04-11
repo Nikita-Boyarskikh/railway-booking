@@ -1,10 +1,11 @@
 """Service layer for the bookings app: order creation and validation."""
 
 import uuid as uuid_mod
-from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
+from djmoney.money import Money
 
 from apps.core.availability import resolve_station_range, seat_is_free
 from apps.core.cache import bump_departure_generation
@@ -12,6 +13,7 @@ from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.types import OrderItemInput
 from apps.stations.models import Station
 from apps.trains.models import Departure, Seat
+from config.settings import DEFAULT_CURRENCY
 
 from .models import Booking, Order, Passenger
 
@@ -29,7 +31,7 @@ class SeatUnavailableError(Exception):
 
 
 class InvalidRequestError(Exception):
-    """Raised for client-side errors during order creation (maps to 400)."""
+    """Raised for business-logic errors during order creation (maps to 400)."""
 
 
 @transaction.atomic
@@ -44,25 +46,16 @@ def create_order(
     Runs inside a single transaction and takes a row-level lock on each
     selected :class:`~apps.trains.models.Seat` to prevent double-booking.
 
-    Args:
-        departure_uuid: UUID of the target departure.
-        station_from_code: Boarding station code.
-        station_to_code: Alighting station code.
-        items: List of dicts with ``car_number``, ``seat_number`` and passenger
-            fields (``passenger_name``/``_passport``/``_gender``/``_birth_date``).
+    Input validation (empty items, same station, field types) is expected
+    to be handled by the serializer layer before calling this function.
 
     Raises:
-        InvalidRequestError: On malformed input or unknown references.
+        InvalidRequestError: On unknown references or route mismatch.
         SeatUnavailableError: If a requested seat is already booked for the range.
     """
-    if not items:
-        raise InvalidRequestError(_("Items must not be empty"))
-    if station_from_code == station_to_code:
-        raise InvalidRequestError(_("Station_from and station_to must differ"))
-
     try:
         departure = Departure.objects.select_related("train__route").get(uuid=departure_uuid)
-    except (Departure.DoesNotExist, ValueError) as e:
+    except (Departure.DoesNotExist, ValidationError) as e:
         raise InvalidRequestError(_("Departure not found")) from e
 
     stations = {
@@ -80,18 +73,13 @@ def create_order(
             _("Route does not cover the requested station_from → station_to segment")
         )
     from_order, to_order = rng
-    if to_order <= from_order:
-        raise InvalidRequestError(_("Station_to must come after station_from along the route"))
 
     order = Order.objects.create()
-    total = Decimal("0")
+    total = Money(currency=DEFAULT_CURRENCY)
 
     for item in items:
-        try:
-            car_number = int(item["car_number"])
-            seat_number = int(item["seat_number"])
-        except (KeyError, TypeError, ValueError) as e:
-            raise InvalidRequestError(_("Each item requires car_number and seat_number")) from e
+        car_number = item["car_number"]
+        seat_number = item["seat_number"]
 
         try:
             seat = (
@@ -136,7 +124,6 @@ def create_order(
     order.total_price = total
     order.save(update_fields=["total_price"])
 
-    # Invalidate cached seat maps for this departure once the booking commits.
     dep_uuid = str(departure.uuid)
     transaction.on_commit(lambda: bump_departure_generation(dep_uuid))
 

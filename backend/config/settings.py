@@ -1,9 +1,8 @@
 import os
-from decimal import Decimal
 from pathlib import Path
-from django.utils.translation import gettext_lazy as _
 
 import django_stubs_ext
+from django.utils.translation import gettext_lazy as _
 
 django_stubs_ext.monkeypatch()
 

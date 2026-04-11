@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import Booking, Order, Passenger
 
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin[Order]):
     """Admin for :class:`Order`"""

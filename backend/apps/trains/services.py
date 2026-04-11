@@ -5,7 +5,8 @@ views and serializers so it can be tested and reused.
 """
 
 from datetime import date as date_cls
-from decimal import Decimal
+
+from djmoney.money import Money
 
 from apps.core.availability import free_seat_ids, resolve_station_range
 from apps.core.cache import cached_list_seats, cached_search_departures
@@ -76,7 +77,7 @@ def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[
 
         subtotal = calc_segment_range_subtotal(route, from_order, to_order)
 
-        min_price: Decimal | None = None
+        min_price: Money | None = None
         for car in dep.train.cars.all():
             for seat in car.seats.all():
                 if seat.id not in free_ids:

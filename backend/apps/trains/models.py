@@ -1,10 +1,9 @@
 import uuid
-from decimal import Decimal
-from django.utils.translation import gettext_lazy as _
 
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
+from django.utils.translation import gettext_lazy as _
 from django_stubs_ext.db.models import TypedModelMeta
 
 

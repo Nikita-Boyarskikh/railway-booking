@@ -1,6 +1,6 @@
 """Shared TypedDict definitions for service-layer return types."""
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 class TimetableStop(TypedDict):
@@ -37,7 +37,7 @@ class CarDict(TypedDict):
 
     number: int
     car_type: str
-    features: dict[str, object]
+    features: dict[str, Any]
     seats: list[SeatDict]
 
 

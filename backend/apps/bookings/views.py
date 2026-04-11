@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Order
-from .serializers import OrderSerializer
+from .serializers import CreateOrderSerializer, OrderSerializer
 from .services import InvalidRequestError, SeatUnavailableError, create_order
 
 
@@ -14,7 +14,10 @@ class OrderCreateView(APIView):
 
     def post(self, request: Request) -> Response:
         """Create an order. Returns 201 on success, 409 on seat conflict, 400 on bad input."""
-        data = request.data
+        serializer = CreateOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
         try:
             order = create_order(
                 departure_uuid=data["departure_uuid"],
@@ -31,7 +34,7 @@ class OrderCreateView(APIView):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
-        except (InvalidRequestError, KeyError, ValueError, TypeError) as e:
+        except InvalidRequestError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 

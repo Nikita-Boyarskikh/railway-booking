@@ -1,4 +1,9 @@
+from typing import Any
+
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+from apps.bookings.models import Gender
 
 from .models import Booking, Order, Passenger
 
@@ -31,6 +36,31 @@ class BookingSerializer(serializers.ModelSerializer[Booking]):
             "station_to_code",
             "passenger",
         ]
+
+
+class OrderItemSerializer(serializers.Serializer[None]):
+    """Serializer for each item in the ``items`` list when creating an order."""
+
+    car_number = serializers.IntegerField(min_value=1)
+    seat_number = serializers.IntegerField(min_value=1)
+    passenger_name = serializers.CharField(max_length=255)
+    passenger_passport = serializers.CharField(max_length=64)
+    passenger_gender = serializers.ChoiceField(choices=Gender.choices)
+    passenger_birth_date = serializers.DateField()
+
+
+class CreateOrderSerializer(serializers.Serializer[None]):
+    """Input serializer for order creation, validating the request body."""
+
+    departure_uuid = serializers.UUIDField()
+    station_from_code = serializers.CharField(max_length=16)
+    station_to_code = serializers.CharField(max_length=16)
+    items = serializers.ListField(child=OrderItemSerializer(), min_length=1)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if attrs["station_from_code"] == attrs["station_to_code"]:
+            raise ValidationError({"station_to_code": "Station_from and station_to must differ."})
+        return attrs
 
 
 class OrderSerializer(serializers.ModelSerializer[Order]):

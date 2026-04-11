@@ -75,13 +75,13 @@ An ordered sequence of segments forming a complete path.
 
 ### RouteSegment
 
-| Field | Type            | Notes |
-|-------|-----------------|-------|
-| id | PK              | |
+| Field | Type            | Notes                                                    |
+|-------|-----------------|----------------------------------------------------------|
+| id | PK              |                                                          |
 | route | FK → Route      | unique together with segment; unique together with order |
-| segment | FK → Connection | |
-| order | int             | sequence number in route |
-| stop_duration | duration        | default 0, stop time at segment's station_from |
+| segment | FK → Connection |                                                          |
+| order | int             | sequence number in route                                 |
+| stop_duration | duration        | default 0, stop time at segment's station_to             |
 
 ### Train
 

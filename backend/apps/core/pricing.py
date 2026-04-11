@@ -10,7 +10,6 @@ The booking price for a segment range is::
 multiplied by any factor.
 """
 
-from decimal import Decimal
 
 from constance import config
 from django.db.models import QuerySet

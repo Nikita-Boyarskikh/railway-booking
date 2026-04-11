@@ -1,24 +1,27 @@
 """Regression tests guarding against N+1 growth in pricing/availability."""
 
 from datetime import date
-from decimal import Decimal
 
 import pytest
 from pytest_django import DjangoAssertNumQueries
 
 from apps.bookings.models import Booking, Order, Passenger
+from apps.stations.models import Station
+from apps.trains.models import Departure, Seat
 from apps.trains.services import search_departures
-from tests.conftest import TypeTestData
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
 def test_search_departures_query_count_constant_in_bookings(
-    test_data: TypeTestData,
+    stations: list[Station],
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Query count for ``search_departures`` must not grow with booking count."""
-    d = test_data
-    s = d["stations"]
+    s = stations
 
     # Baseline: with zero bookings, call once to warm any lazy imports.
     with django_assert_max_num_queries(20):
@@ -30,18 +33,17 @@ def test_search_departures_query_count_constant_in_bookings(
     # two seats in the fixture, so alternate seats and segments to spread the
     # load while keeping every pair non-overlapping enough to succeed.
     order = Order.objects.create()
-    departure = d["departure"]
-    seats = [d["seat"], d["seat2"]]
+    seats = [seat, seat2]
     ranges = [(s[0], s[1]), (s[1], s[2]), (s[2], s[3])]
 
     created = 0
     for i in range(10):
-        seat = seats[i % 2]
+        s_obj = seats[i % 2]
         station_from, station_to = ranges[i % 3]
         # Skip duplicates (same seat+range combo) to avoid unique conflicts.
         if Booking.objects.filter(
             departure=departure,
-            seat=seat,
+            seat=s_obj,
             station_from=station_from,
             station_to=station_to,
         ).exists():
@@ -55,7 +57,7 @@ def test_search_departures_query_count_constant_in_bookings(
         Booking.objects.create(
             order=order,
             departure=departure,
-            seat=seat,
+            seat=s_obj,
             station_from=station_from,
             station_to=station_to,
             passenger=passenger,

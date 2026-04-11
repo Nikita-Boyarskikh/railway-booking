@@ -55,13 +55,6 @@ def resolve_station_range(
     return f, t
 
 
-def booking_segment_range(booking: Booking) -> tuple[int, int]:
-    """Resolve a booking's ``(from_order, to_order)`` via cached route maps."""
-    route = booking.departure.train.route
-    rng = resolve_station_range(route, booking.station_from_id, booking.station_to_id)
-    return rng if rng else (0, 0)
-
-
 def seat_is_free(departure: Departure, seat_id: int, from_order: int, to_order: int) -> bool:
     """Return True if no existing booking overlaps ``[from_order, to_order)``."""
     route = departure.train.route
@@ -90,8 +83,7 @@ def free_seat_ids(departure: Departure, from_order: int, to_order: int) -> set[i
     )
     for seat_id, sf, st in bookings:
         rng = resolve_station_range(route, sf, st)
-        if not rng:
-            continue
+        assert rng is not None, "booking with invalid station_from/station_to for route"
         b_from, b_to = rng
         if b_from < to_order and from_order < b_to:
             occupied.add(seat_id)
