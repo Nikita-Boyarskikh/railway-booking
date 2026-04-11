@@ -54,13 +54,13 @@ The data model is designed so the following can be added later without major sch
 
 A span of track between two adjacent stations.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| id | PK | |
+| Field | Type         | Notes |
+|-------|--------------|-------|
+| id | PK           | |
 | station_from | FK → Station | |
 | station_to | FK → Station | |
-| distance_km | decimal | |
-| base_price | decimal | price for this segment |
+| distance_km | decimal      | |
+| base_price | money        | price for this segment |
 
 ### Route
 
@@ -142,12 +142,12 @@ Time at any intermediate station is computed:
 
 ### Order
 
-| Field | Type | Notes |
-|-------|------|-------|
-| id | PK | |
+| Field | Type     | Notes |
+|-------|----------|-------|
+| id | PK       | |
 | created_at | datetime | |
-| total_price | decimal | |
-| features | JSON | {} for now, extensible (e.g. refundable, insurance) |
+| total_price | money    | |
+| features | JSON     | {} for now, extensible (e.g. refundable, insurance) |
 
 ### Booking
 

@@ -1,30 +1,36 @@
 """Seat availability helpers.
 
-Availability is derived dynamically from the ``Booking`` table by comparing
-segment-order ranges along a route. To keep this cheap, we build once per
-route a pair of maps from ``(station_from_id, station_to_id)`` to the
-``RouteSegment.order`` at which that station first appears, and cache them
-on the ``Route`` instance.
+Request-path callers translate public ``(station_from_code, station_to_code)``
+inputs into an internal ``(from_order, to_order)`` range over the train's
+``RouteSegment.order`` values. The translation is driven by a per-route pair
+of maps from ``station_id`` to segment order, cached in an in-memory cache
+keyed by ``route.pk`` and invalidated by signal handlers in
+:mod:`apps.core.signals` whenever a ``Route`` or ``RouteSegment`` row changes.
+
+Overlap checks on existing bookings are delegated to Postgres via the GiST
+exclusion constraint on ``Booking`` — :func:`free_seat_ids` derives the
+occupied set with a single ``segment_range &&`` query rather than walking
+route segments in Python.
 """
 
-from functools import cache
-
 from django.db.models import QuerySet
+from psycopg.types.range import Range
 
 from apps.bookings.models import Booking
-from apps.core.db_utils import use_prefetched_if_available
+from apps.core.cache import _StationOrderMaps, cached_station_order_maps
+from apps.core.db_utils import use_prefetched_if_available, is_prefetched
 from apps.routes.models import Route, RouteSegment
 from apps.trains.models import Departure, Seat
 
 
-@cache
-def _get_station_order_maps(route: Route) -> tuple[dict[int, int], dict[int, int]]:
+def _get_station_order_maps(route: Route) -> _StationOrderMaps:
     """Return ``(from_order_by_station, to_order_by_station)`` for a route.
 
     ``from_order_by_station[station_id]`` is the order of the first segment
     whose ``station_from`` is that station. ``to_order_by_station[station_id]``
     is ``order + 1`` for the first segment whose ``station_to`` is that
-    station. Cached by ``functools.cache`` on the route's identity (pk-based).
+    station. Cached per-process by ``route.pk`` and invalidated via signals
+    when the route's segments change.
     """
     from_map: dict[int, int] = {}
     to_map: dict[int, int] = {}
@@ -36,8 +42,7 @@ def _get_station_order_maps(route: Route) -> tuple[dict[int, int], dict[int, int
     for route_segment in route_segments:
         from_map.setdefault(route_segment.segment.station_from_id, route_segment.order)
         to_map.setdefault(route_segment.segment.station_to_id, route_segment.order + 1)
-
-    return (from_map, to_map)
+    return from_map, to_map
 
 
 def resolve_station_range(
@@ -47,7 +52,7 @@ def resolve_station_range(
 
     Uses the cached station-order maps built by :func:`_get_station_order_maps`.
     """
-    from_map, to_map = _get_station_order_maps(route)
+    from_map, to_map = cached_station_order_maps(route, _get_station_order_maps)
     f = from_map.get(station_from_id)
     t = to_map.get(station_to_id)
     if f is None or t is None or t <= f:
@@ -55,36 +60,26 @@ def resolve_station_range(
     return f, t
 
 
-def seat_is_free(departure: Departure, seat_id: int, from_order: int, to_order: int) -> bool:
-    """Return True if no existing booking overlaps ``[from_order, to_order)``."""
-    route = departure.train.route
-    existing = Booking.objects.filter(departure=departure, seat_id=seat_id).only(
-        "seat_id", "station_from_id", "station_to_id", "departure_id"
-    )
-    for b in existing:
-        b_from, b_to = resolve_station_range(route, b.station_from_id, b.station_to_id) or (0, 0)
-        if b_from < to_order and from_order < b_to:
-            return False
-    return True
-
-
 def free_seat_ids(departure: Departure, from_order: int, to_order: int) -> set[int]:
     """Return the set of seat IDs free on ``departure`` for the given range.
 
-    Runs in O(1) DB queries regardless of how many existing bookings there are:
-    one query for all seats on the train, one for all bookings on the
-    departure. Overlap checks are resolved in Python via cached route maps.
+    Two queries regardless of how many existing bookings there are: at most
+    one for all seats on the train (skipped if already prefetched with
+    ``prefetch_related("train__cars__seats")``) and one
+    ``segment_range && [from_order, to_order)`` over the bookings for this
+    departure. The overlap test runs in Postgres against the GiST index that
+    backs the exclusion constraint.
     """
-    all_seat_ids = set(Seat.objects.filter(car__train=departure.train).values_list("id", flat=True))
-    route = departure.train.route
-    occupied: set[int] = set()
-    bookings = Booking.objects.filter(departure=departure).values_list(
-        "seat_id", "station_from_id", "station_to_id"
+    if is_prefetched(departure.train, "cars"):
+        all_seat_ids = {seat.pk for car in departure.train.cars.all() for seat in car.seats.all()}
+    else:
+        all_seat_ids = set(
+            Seat.objects.filter(car__train=departure.train).values_list("id", flat=True)
+        )
+    trip_range: Range[int] = Range(from_order, to_order, bounds="[)")
+    occupied = set(
+        Booking.objects.filter(departure=departure, segment_range__overlap=trip_range).values_list(
+            "seat_id", flat=True
+        )
     )
-    for seat_id, sf, st in bookings:
-        rng = resolve_station_range(route, sf, st)
-        assert rng is not None, "booking with invalid station_from/station_to for route"
-        b_from, b_to = rng
-        if b_from < to_order and from_order < b_to:
-            occupied.add(seat_id)
     return all_seat_ids - occupied

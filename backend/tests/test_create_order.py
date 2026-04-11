@@ -19,7 +19,10 @@ from tests.conftest import make_order_item
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_same_station(
-    stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Same from/to falls through to route resolution and is rejected."""
     item = make_order_item(car.number, seat.number)
@@ -30,7 +33,9 @@ def test_create_order_same_station(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_unknown_departure_uuid(
-    stations: list[Station], car: Car, seat: Seat,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
 ) -> None:
     item = make_order_item(car.number, seat.number)
     with pytest.raises(InvalidRequestError, match="not found"):
@@ -40,7 +45,9 @@ def test_create_order_unknown_departure_uuid(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_invalid_uuid_format(
-    stations: list[Station], car: Car, seat: Seat,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
 ) -> None:
     item = make_order_item(car.number, seat.number)
     with pytest.raises(InvalidRequestError, match="not found"):
@@ -50,7 +57,9 @@ def test_create_order_invalid_uuid_format(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_unknown_station_code(
-    car: Car, seat: Seat, departure: Departure,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     item = make_order_item(car.number, seat.number)
     with pytest.raises(InvalidRequestError, match="Unknown station"):
@@ -60,7 +69,10 @@ def test_create_order_unknown_station_code(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_station_not_on_route(
-    car: Car, seat: Seat, departure: Departure, db: None,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    db: None,
 ) -> None:
     """Stations exist but are not part of the train's route."""
     Station.objects.create(name="X", code="X")
@@ -73,7 +85,10 @@ def test_create_order_station_not_on_route(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_backward_station_range(
-    stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Booking from C to A (reverse direction) is rejected."""
     item = make_order_item(car.number, seat.number)
@@ -84,7 +99,8 @@ def test_create_order_backward_station_range(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_unknown_seat(
-    stations: list[Station], departure: Departure,
+    stations: list[Station],
+    departure: Departure,
 ) -> None:
     item = make_order_item(car_number=99, seat_number=99)
     with pytest.raises(InvalidRequestError, match="not found"):
@@ -99,7 +115,10 @@ def test_create_order_unknown_seat(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_single_item(
-    stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     item = make_order_item(car.number, seat.number)
     order = create_order(departure.uuid, stations[0].code, stations[3].code, [item])
@@ -113,7 +132,11 @@ def test_create_order_single_item(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_multiple_items(
-    stations: list[Station], car: Car, seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """Two seats in one order — total_price is sum of both."""
     items = [
@@ -131,7 +154,10 @@ def test_create_order_multiple_items(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_partial_route(
-    stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Booking for a sub-segment (A->B) prices only that segment."""
     item = make_order_item(car.number, seat.number)
@@ -143,12 +169,18 @@ def test_create_order_partial_route(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_rolls_back_on_conflict(
-    stations: list[Station], car: Car, seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """If second item fails, entire order is rolled back (atomic)."""
     # Book seat1 for A->D first
     create_order(
-        departure.uuid, stations[0].code, stations[3].code,
+        departure.uuid,
+        stations[0].code,
+        stations[3].code,
         [make_order_item(car.number, seat.number)],
     )
 

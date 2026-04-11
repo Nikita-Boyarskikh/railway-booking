@@ -6,6 +6,7 @@ from .models import Booking, Order, Passenger
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin[Order]):
     """Admin for :class:`Order`"""
+
     list_display = ("uuid", "created_at", "total_price")
     ordering = ("-created_at",)
     search_fields = ("uuid",)
@@ -15,6 +16,7 @@ class OrderAdmin(admin.ModelAdmin[Order]):
 @admin.register(Passenger)
 class PassengerAdmin(admin.ModelAdmin[Passenger]):
     """Admin for :class:`Passenger`"""
+
     list_display = ("name", "passport_number", "birth_date", "gender")
     search_fields = ("name", "passport_number")
     ordering = ("passport_number",)

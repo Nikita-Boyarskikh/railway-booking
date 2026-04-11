@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "constance",
     "djmoney",
@@ -85,14 +86,17 @@ STORAGES = {
 
 CACHES = {
     "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "redis": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
         "TIMEOUT": 60,
-    }
+    },
 }
 
-CURRENCIES = ('USD',)
-DEFAULT_CURRENCY = 'USD'
+CURRENCIES = ("USD",)
+DEFAULT_CURRENCY = "USD"
 SERIALIZATION_MODULES = {"json": "djmoney.serializers"}
 
 LANGUAGE_CODE = "en-us"

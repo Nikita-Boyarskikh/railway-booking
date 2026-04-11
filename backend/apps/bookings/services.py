@@ -3,11 +3,12 @@
 import uuid as uuid_mod
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 from djmoney.money import Money
+from psycopg.types.range import Range
 
-from apps.core.availability import resolve_station_range, seat_is_free
+from apps.core.availability import resolve_station_range
 from apps.core.cache import bump_departure_generation
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.types import OrderItemInput
@@ -15,17 +16,19 @@ from apps.stations.models import Station
 from apps.trains.models import Departure, Seat
 from config.settings import DEFAULT_CURRENCY
 
-from .models import Booking, Order, Passenger
+from .models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 
 
 class SeatUnavailableError(Exception):
     """Raised when a requested seat was taken between validation and commit."""
 
     def __init__(self, car_number: int, seat_number: int):
-        super().__init__(_("Seat car={car_number} seat={seat_number} no longer available").format(
-            seat_number=seat_number,
-            car_number=car_number,
-        ))
+        super().__init__(
+            _("Seat car={car_number} seat={seat_number} no longer available").format(
+                seat_number=seat_number,
+                car_number=car_number,
+            )
+        )
         self.car_number = car_number
         self.seat_number = seat_number
 
@@ -43,8 +46,13 @@ def create_order(
 ) -> Order:
     """Create an :class:`Order` with one :class:`Booking` per ``item``.
 
-    Runs inside a single transaction and takes a row-level lock on each
-    selected :class:`~apps.trains.models.Seat` to prevent double-booking.
+    Concurrency safety is delegated to a GiST ``ExclusionConstraint`` on
+    ``Booking`` that forbids two bookings for the same ``(departure, seat)``
+    from holding overlapping ``segment_range`` values. The constraint covers
+    both cross-transaction races and duplicate seats in a single order, so
+    this function does not take any row-level locks — it just inserts and
+    translates the resulting ``IntegrityError`` into
+    :class:`SeatUnavailableError`.
 
     Input validation (empty items, same station, field types) is expected
     to be handled by the serializer layer before calling this function.
@@ -73,23 +81,29 @@ def create_order(
             _("Route does not cover the requested station_from → station_to segment")
         )
     from_order, to_order = rng
+    trip_range: Range[int] = Range(from_order, to_order, bounds="[)")
 
-    order = Order.objects.create()
+    # Subtotal depends only on (route, from_order, to_order), so compute it
+    # once for all items instead of repeating the RouteSegment scan per seat.
+    subtotal = calc_segment_range_subtotal(route, from_order, to_order)
+
+    # Sort items by (car_number, seat_number) so two concurrent multi-seat
+    # orders on overlapping seat sets always touch rows in the same order and
+    # cannot deadlock on the exclusion-constraint index.
+    sorted_items = sorted(items, key=lambda i: (i["car_number"], i["seat_number"]))
+
+    resolved: list[tuple[OrderItemInput, Seat]] = []
     total = Money(currency=DEFAULT_CURRENCY)
 
-    for item in items:
+    for item in sorted_items:
         car_number = item["car_number"]
         seat_number = item["seat_number"]
 
         try:
-            seat = (
-                Seat.objects.select_for_update()
-                .select_related("car__train")
-                .get(
-                    car__train=departure.train,
-                    car__number=car_number,
-                    number=seat_number,
-                )
+            seat = Seat.objects.select_related("car__train").get(
+                car__train=departure.train,
+                car__number=car_number,
+                number=seat_number,
             )
         except Seat.DoesNotExist as e:
             raise InvalidRequestError(
@@ -99,9 +113,14 @@ def create_order(
                 )
             ) from e
 
-        if not seat_is_free(departure, seat.pk, from_order, to_order):
-            raise SeatUnavailableError(car_number, seat_number)
+        resolved.append((item, seat))
+        total += calc_booking_price(subtotal, seat)
 
+    # Total is known up-front, so insert the order with its final price in a
+    # single statement rather than INSERT followed by UPDATE.
+    order = Order.objects.create(total_price=total)
+
+    for item, seat in resolved:
         passenger = Passenger.objects.create(
             name=item["passenger_name"],
             passport_number=item["passenger_passport"],
@@ -109,20 +128,20 @@ def create_order(
             birth_date=item["passenger_birth_date"],
         )
 
-        Booking.objects.create(
-            order=order,
-            departure=departure,
-            seat=seat,
-            station_from=station_from,
-            station_to=station_to,
-            passenger=passenger,
-        )
-
-        subtotal = calc_segment_range_subtotal(route, from_order, to_order)
-        total += calc_booking_price(subtotal, seat)
-
-    order.total_price = total
-    order.save(update_fields=["total_price"])
+        try:
+            Booking.objects.create(
+                order=order,
+                departure=departure,
+                seat=seat,
+                station_from=station_from,
+                station_to=station_to,
+                passenger=passenger,
+                segment_range=trip_range,
+            )
+        except IntegrityError as e:
+            if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e): # pragma: no cover
+                raise # should never happen if the DB schema is correct
+            raise SeatUnavailableError(seat.car.number, seat.number) from e
 
     dep_uuid = str(departure.uuid)
     transaction.on_commit(lambda: bump_departure_generation(dep_uuid))

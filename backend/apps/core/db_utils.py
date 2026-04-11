@@ -4,6 +4,11 @@ from typing import Any
 from django.db.models import Model, QuerySet
 
 
+def is_prefetched(model: Model, related_name: str) -> bool:
+    """Return True if the related objects for ``related_name`` are prefetched."""
+    return related_name in getattr(model, "_prefetched_objects_cache", {})
+
+
 def use_prefetched_if_available[T: Model](
     model: T,
     related_name: str,
@@ -11,7 +16,7 @@ def use_prefetched_if_available[T: Model](
 ) -> QuerySet[Any]:
     """Return a queryset that uses the prefetched related objects if available."""
     qs = getattr(model, related_name)
-    if related_name in getattr(model, "_prefetched_objects_cache", {}):
+    if is_prefetched(model, related_name):
         result: QuerySet[Any] = qs.all()
         return result
     return build_fallback_queryset(qs)

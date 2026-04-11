@@ -1,7 +1,5 @@
 """Cache helpers built on Django's cache framework (Redis in prod, locmem in tests).
 
-Implements a pragmatic subset of the design in ``docs/PERF_PLAN.md``:
-
 * **Stations** — single key ``stations:all``, invalidated by signals.
 * **Departure search** — coarse TTL-only cache keyed by ``(from, to, date)``.
   A few seconds of staleness in free-seat counts is acceptable.
@@ -17,24 +15,41 @@ individual bit vectors.
 """
 
 from collections.abc import Callable
+from typing import Final, cast
 
-from django.core.cache import cache
+from django.core.cache import BaseCache, caches
+from django.core.cache.backends.locmem import LocMemCache
+from djmoney.money import Money
+
+from apps.routes.models import Route
+
+local_cache = caches["default"]
+redis_cache = caches["redis"]
 
 STATIONS_KEY = "stations:all"
 STATIONS_TTL = 24 * 60 * 60  # 1 day
 SEARCH_TTL = 30  # seconds
 SEATS_TTL = 60  # seconds
+STATIONS_ORDER_MAPS_TTL = 60  # seconds
 
 _DEP_GEN_TMPL = "dep:gen:{uuid}"
 _SEARCH_TMPL = "search:{from_}:{to}:{date}"
 _SEATS_TMPL = "seats:{uuid}:{from_}:{to}:g{gen}"
+_STATIONS_ORDER_MAPS_TMPL = "som:{route_id}"
+_SEGMENT_RANGE_SUBTOTALS_TMPL = "subtotal:{route_id}:{from_order}:{to_order}"
+
+_MISSING: Final = object()
 
 
-def _get_or_set[T](key: str, loader: Callable[[], T], timeout: int) -> T:
-    """Get ``key`` from the cache, populating via ``loader`` on miss."""
-    hit: T | None = cache.get(key)
-    if hit is not None:
-        return hit
+def _get_or_set[T](cache: BaseCache, key: str, loader: Callable[[], T], timeout: int) -> T:
+    """Get ``key`` from the cache, populating via ``loader`` on miss.
+
+    Uses an explicit sentinel so legitimately-empty loader results (``[]``,
+    ``{}``, ``None``) still cache instead of repopulating on every call.
+    """
+    hit = cache.get(key, _MISSING)
+    if hit is not _MISSING:
+        return hit  # type: ignore[no-any-return]
     value = loader()
     cache.set(key, value, timeout=timeout)
     return value
@@ -47,12 +62,12 @@ def _get_or_set[T](key: str, loader: Callable[[], T], timeout: int) -> T:
 
 def cached_stations(loader: Callable[[], list[dict[str, str]]]) -> list[dict[str, str]]:
     """Return the station list, populating the cache on miss."""
-    return _get_or_set(STATIONS_KEY, loader, STATIONS_TTL)
+    return _get_or_set(redis_cache, STATIONS_KEY, loader, STATIONS_TTL)
 
 
 def invalidate_stations() -> None:
     """Drop the cached station list (called from post_save/post_delete signals)."""
-    cache.delete(STATIONS_KEY)
+    redis_cache.delete(STATIONS_KEY)
 
 
 # ---------------------------------------------------------------------------
@@ -66,8 +81,7 @@ def _gen_key(departure_uuid: str) -> str:
 
 def get_departure_generation(departure_uuid: str) -> int:
     """Return the current generation counter for ``departure_uuid`` (0 if unset)."""
-    val: int = cache.get(_gen_key(departure_uuid), 0)
-    return val
+    return cast(int, redis_cache.get(_gen_key(departure_uuid), 0))
 
 
 def bump_departure_generation(departure_uuid: str) -> int:
@@ -78,9 +92,9 @@ def bump_departure_generation(departure_uuid: str) -> int:
     """
     key = _gen_key(departure_uuid)
     try:
-        return cache.incr(key)
+        return redis_cache.incr(key)
     except ValueError:
-        cache.set(key, 1, timeout=None)
+        redis_cache.set(key, 1, timeout=None)
         return 1
 
 
@@ -97,7 +111,7 @@ def cached_search_departures[T](
 ) -> T:
     """Cache the full ``search_departures`` response for ``SEARCH_TTL`` seconds."""
     key = _SEARCH_TMPL.format(from_=from_code, to=to_code, date=date_iso)
-    return _get_or_set(key, loader, SEARCH_TTL)
+    return _get_or_set(redis_cache, key, loader, SEARCH_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -114,4 +128,33 @@ def cached_list_seats[T](
     """Cache ``list_seats`` for this ``(departure, from, to)`` at the current generation."""
     gen = get_departure_generation(departure_uuid)
     key = _SEATS_TMPL.format(uuid=departure_uuid, from_=from_code, to=to_code, gen=gen)
-    return _get_or_set(key, loader, SEATS_TTL)
+    return _get_or_set(redis_cache, key, loader, SEATS_TTL)
+
+
+# ----------------------------------------------------------------------------
+# Cache station order maps for a route, used by :func:`apps.trains.services.resolve_station_range`.
+# ----------------------------------------------------------------------------
+
+_StationOrderMaps = tuple[dict[int, int], dict[int, int]]
+
+def cached_station_order_maps(route: Route, loader: Callable[[Route], _StationOrderMaps]) -> _StationOrderMaps:
+    """Return the station-order maps for one route, caching the result."""
+    key = _STATIONS_ORDER_MAPS_TMPL.format(route_id=route.pk)
+    return _get_or_set(local_cache, key, lambda: loader(route), STATIONS_ORDER_MAPS_TTL)
+
+def invalidate_station_order_maps(route_id: int) -> None:
+    """Drop the cached station-order maps for one route."""
+    local_cache.delete(_STATIONS_ORDER_MAPS_TMPL.format(route_id=route_id))
+
+
+# ----------------------------------------------------------------------------
+# Cache segment range subtotals for a route, used by :func:`apps.trains.services.search_departures`.
+# ----------------------------------------------------------------------------
+
+def memoized_segment_range_subtotal(loader: Callable[[int, int, int], Money]) -> Callable[[int, int, int], Money]:
+    """Return the cached subtotal for one route and station range."""
+    subtotal_cache = LocMemCache('segment_range_subtotals', params={})
+    def get_memoized_subtotal(route_id: int, from_order: int, to_order: int) -> Money:
+        key = _SEGMENT_RANGE_SUBTOTALS_TMPL.format(route_id=route_id, from_order=from_order, to_order=to_order)
+        return _get_or_set(subtotal_cache, key, lambda: loader(route_id, from_order, to_order), STATIONS_ORDER_MAPS_TTL)
+    return get_memoized_subtotal

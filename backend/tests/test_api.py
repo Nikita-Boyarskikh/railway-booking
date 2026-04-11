@@ -1,4 +1,5 @@
 """HTTP API tests — one test per endpoint/scenario."""
+
 from typing import Any
 from uuid import uuid4
 
@@ -45,7 +46,11 @@ def test_stations_list_sorted_by_name(api_client: APIClient, stations: list[Stat
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_departures_search(
-    api_client: APIClient, stations: list[Station], seat: Seat, seat2: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     r = api_client.get(
         f"/api/departures/?from={stations[0].code}&to={stations[3].code}&date=2026-05-01"
@@ -66,7 +71,9 @@ def test_departures_search_missing_params(api_client: APIClient) -> None:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_departures_search_no_results(
-    api_client: APIClient, stations: list[Station], departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    departure: Departure,
 ) -> None:
     r = api_client.get(
         f"/api/departures/?from={stations[0].code}&to={stations[3].code}&date=2099-01-01"
@@ -83,7 +90,11 @@ def test_departures_search_no_results(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_seats_view(
-    api_client: APIClient, stations: list[Station], seat: Seat, seat2: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     r = api_client.get(
         f"/api/departures/{departure.uuid}/seats/?from={stations[0].code}&to={stations[3].code}"
@@ -112,7 +123,10 @@ def test_seats_view_departure_not_found(api_client: APIClient, stations: list[St
 
 
 def _order_payload(
-    departure: Departure, stations: list[Station], car: Car, seat: Seat,
+    departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
 ) -> dict[str, Any]:
     return {
         "departure_uuid": str(departure.uuid),
@@ -134,10 +148,16 @@ def _order_payload(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create(
-    api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     r = api_client.post(
-        "/api/orders/", _order_payload(departure, stations, car, seat), format="json",
+        "/api/orders/",
+        _order_payload(departure, stations, car, seat),
+        format="json",
     )
     assert r.status_code == 201
     data = r.json()
@@ -156,7 +176,11 @@ def test_order_create(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_conflict_409(
-    api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     payload = _order_payload(departure, stations, car, seat)
     api_client.post("/api/orders/", payload, format="json")
@@ -178,15 +202,21 @@ def test_order_create_missing_field_400(api_client: APIClient) -> None:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_empty_items_400(
-    api_client: APIClient, stations: list[Station], departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    departure: Departure,
 ) -> None:
     """Serializer rejects empty items list."""
-    r = api_client.post("/api/orders/", {
-        "departure_uuid": str(departure.uuid),
-        "station_from_code": stations[0].code,
-        "station_to_code": stations[3].code,
-        "items": [],
-    }, format="json")
+    r = api_client.post(
+        "/api/orders/",
+        {
+            "departure_uuid": str(departure.uuid),
+            "station_from_code": stations[0].code,
+            "station_to_code": stations[3].code,
+            "items": [],
+        },
+        format="json",
+    )
     assert r.status_code == 400
     assert "items" in r.json()
 
@@ -194,7 +224,11 @@ def test_order_create_empty_items_400(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_same_station_400(
-    api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Serializer rejects from == to."""
     payload = _order_payload(departure, stations, car, seat)
@@ -206,7 +240,11 @@ def test_order_create_same_station_400(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_invalid_gender_400(
-    api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Serializer rejects invalid gender choice."""
     payload = _order_payload(departure, stations, car, seat)
@@ -218,7 +256,11 @@ def test_order_create_invalid_gender_400(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_wrong_departure_uuid_400(
-        api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Serializer rejects invalid gender choice."""
     payload = _order_payload(departure, stations, car, seat)
@@ -235,10 +277,16 @@ def test_order_create_wrong_departure_uuid_400(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_retrieve(
-    api_client: APIClient, stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    api_client: APIClient,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     r = api_client.post(
-        "/api/orders/", _order_payload(departure, stations, car, seat), format="json",
+        "/api/orders/",
+        _order_payload(departure, stations, car, seat),
+        format="json",
     )
     order_uuid = r.json()["uuid"]
     r2 = api_client.get(f"/api/orders/{order_uuid}/")

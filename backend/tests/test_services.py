@@ -27,7 +27,9 @@ def test_search_departures_unknown_station(departure: Departure) -> None:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_wrong_date(
-    stations: list[Station], seat: Seat, departure: Departure,
+    stations: list[Station],
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """Correct stations but wrong date returns empty list."""
     result = search_departures(stations[0].code, stations[3].code, date(2099, 12, 31))
@@ -37,7 +39,10 @@ def test_search_departures_wrong_date(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_min_price(
-    stations: list[Station], seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """min_price reflects the cheapest free seat."""
     result = search_departures(stations[0].code, stations[3].code, date(2026, 5, 1))
@@ -49,12 +54,18 @@ def test_search_departures_min_price(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_min_price_none_when_full(
-    stations: list[Station], car: Car, seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """When all seats are booked, min_price is None."""
     for s in [seat, seat2]:
         create_order(
-            departure.uuid, stations[0].code, stations[3].code,
+            departure.uuid,
+            stations[0].code,
+            stations[3].code,
             [make_order_item(car.number, s.number)],
         )
     result = search_departures(stations[0].code, stations[3].code, date(2026, 5, 1))
@@ -65,7 +76,11 @@ def test_search_departures_min_price_none_when_full(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_min_price_cheapest_seat(
-    stations: list[Station], car: Car, seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """min_price picks the cheapest among free seats when factors differ."""
     seat2.price_factor = Decimal("2.0")
@@ -78,7 +93,9 @@ def test_search_departures_min_price_cheapest_seat(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_skips_train_not_on_route(
-    stations: list[Station], seat: Seat, departure: Departure,
+    stations: list[Station],
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """A train whose route doesn't cover from->to is excluded."""
     # Search B->A (reverse) — our train goes A->D, so it won't match
@@ -101,7 +118,9 @@ def test_list_seats_invalid_station_codes(departure: Departure) -> None:
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
-def test_list_seats_invalid_station_code_order(stations: list[Station], departure: Departure) -> None:
+def test_list_seats_invalid_station_code_order(
+    stations: list[Station], departure: Departure
+) -> None:
     """Station codes in the wrong order (to before from) also return empty cars list."""
     result = list_seats(departure, stations[-1].code, stations[0].code)
     assert result == {"cars": []}
@@ -110,7 +129,9 @@ def test_list_seats_invalid_station_code_order(stations: list[Station], departur
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_groups_by_car(
-    stations: list[Station], train: Train, departure: Departure,
+    stations: list[Station],
+    train: Train,
+    departure: Departure,
 ) -> None:
     """Multiple cars appear as separate entries in the response."""
     car1 = Car.objects.create(train=train, number=1)
@@ -127,11 +148,17 @@ def test_list_seats_groups_by_car(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_status_after_booking(
-    stations: list[Station], car: Car, seat: Seat, seat2: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
 ) -> None:
     """Booked seat shows status=occupied, other seat stays free."""
     create_order(
-        departure.uuid, stations[0].code, stations[3].code,
+        departure.uuid,
+        stations[0].code,
+        stations[3].code,
         [make_order_item(car.number, seat.number)],
     )
     result = list_seats(departure, stations[0].code, stations[3].code)
@@ -144,7 +171,9 @@ def test_list_seats_status_after_booking(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_price_reflects_car_factor(
-    stations: list[Station], train: Train, departure: Departure,
+    stations: list[Station],
+    train: Train,
+    departure: Departure,
 ) -> None:
     """A car with price_factor=1.5 produces higher seat prices."""
     expensive_car = Car.objects.create(train=train, number=10, price_factor=Decimal("1.5"))

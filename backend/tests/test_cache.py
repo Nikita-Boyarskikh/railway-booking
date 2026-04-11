@@ -3,10 +3,16 @@
 from datetime import date
 
 import pytest
-from django.core.cache import cache
+from django.test.testcases import TestCase
 
 from apps.bookings.services import create_order
-from apps.core.cache import STATIONS_KEY, bump_departure_generation, get_departure_generation
+from apps.core.cache import (
+    _SEATS_TMPL,
+    STATIONS_KEY,
+    bump_departure_generation,
+    get_departure_generation,
+    redis_cache,
+)
 from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat
@@ -15,48 +21,62 @@ from tests.conftest import make_order_item
 
 
 @pytest.mark.django_db
-def test_stations_cache_invalidated_on_station_change(stations: list[Station]) -> None:
-    """Creating or deleting a Station drops the cached stations:all entry."""
-    cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL"}], timeout=300)
-    Station.objects.create(name="New", code="NEW")
-    assert cache.get(STATIONS_KEY) is None
+def test_stations_cache_invalidated_on_station_change(station_a: Station) -> None:
+    """Creating, modification or deleting a Station drops the cached stations:all entry.
 
-    cache.set(STATIONS_KEY, [{"name": "stale2", "code": "STL2"}], timeout=300)
-    Station.objects.filter(code="NEW").delete()
-    assert cache.get(STATIONS_KEY) is None
+    The invalidation signal is wrapped in ``transaction.on_commit`` so we use
+    ``captureOnCommitCallbacks(execute=True)`` to drive the callbacks inside
+    the test transaction (which never actually commits).
+    """
+    redis_cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL"}], timeout=300)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        Station.objects.create(name="New", code="NEW")
+    assert redis_cache.get(STATIONS_KEY) is None
+
+    redis_cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL2"}], timeout=300)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        station_a.name = "Modified"
+        station_a.save()
+    assert redis_cache.get(STATIONS_KEY) is None
+
+    redis_cache.set(STATIONS_KEY, [{"name": "stale2", "code": "STL1"}], timeout=300)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        Station.objects.filter(code="NEW").delete()
+    assert redis_cache.get(STATIONS_KEY) is None
 
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_cached_and_invalidated_on_booking(
-    stations: list[Station], car: Car, seat: Seat, departure: Departure,
+    stations: list[Station],
+    car: Car,
+    seat: Seat,
+    departure: Departure,
 ) -> None:
     """``list_seats`` hits the cache on repeat calls; a booking bumps the generation."""
-    s = stations
-
-    first = list_seats(departure, s[0].code, s[3].code)
+    first = list_seats(departure, stations[0].code, stations[3].code)
     # Mutate the in-cache entry to prove the next call returns *this* value.
     cache_hit_marker = SeatsResponse(
         cars=[CarDict(number=1, car_type="common", features={"from_cache": 1}, seats=[])]
     )
     # Find the key the service stored under and overwrite it.
     gen = get_departure_generation(str(departure.uuid))
-    key = f"seats:{departure.uuid}:{s[0].code}:{s[3].code}:g{gen}"
-    cache.set(key, cache_hit_marker, timeout=60)
+    key = _SEATS_TMPL.format(uuid=departure.uuid, from_=stations[0].code, to=stations[3].code, gen=gen)
+    redis_cache.set(key, cache_hit_marker, timeout=60)
 
-    second = list_seats(departure, s[0].code, s[3].code)
+    second = list_seats(departure, stations[0].code, stations[3].code)
     assert second == cache_hit_marker, "expected cache hit on second call"
     assert second != first
 
     # Booking bumps the generation; the old key orphans and a fresh load runs.
     create_order(
         departure.uuid,
-        s[0].code,
-        s[1].code,
+        stations[0].code,
+        stations[1].code,
         [make_order_item(car.number, seat.number)],
     )
     assert get_departure_generation(str(departure.uuid)) > gen
-    third = list_seats(departure, s[0].code, s[3].code)
+    third = list_seats(departure, stations[0].code, stations[3].code)
     assert third != cache_hit_marker, "expected fresh data after generation bump"
     assert "cars" in third
 
@@ -69,10 +89,10 @@ def test_search_departures_cached(stations: list[Station], departure: Departure)
 
     first = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
     assert first
-    cached = cache.get(f"search:{s[0].code}:{s[3].code}:2026-05-01")
+    cached = redis_cache.get(f"search:{s[0].code}:{s[3].code}:2026-05-01")
     assert cached == first
     # Poison the cache; subsequent call must return the poisoned value.
-    cache.set(
+    redis_cache.set(
         f"search:{s[0].code}:{s[3].code}:2026-05-01",
         [
             DepartureSummary(
@@ -120,12 +140,14 @@ def test_bump_departure_generation_increments() -> None:
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
-def test_search_departures_empty_result_cached(stations: list[Station], departure: Departure) -> None:
+def test_search_departures_empty_result_cached(
+    stations: list[Station], departure: Departure
+) -> None:
     """An empty departure list is still cached (empty list != None)."""
     s = stations
     # Search for a date with no departures
     result = search_departures(s[0].code, s[3].code, date(2099, 1, 1))
     assert result == []
     # The empty list should be in the cache
-    cached = cache.get(f"search:{s[0].code}:{s[3].code}:2099-01-01")
+    cached = redis_cache.get(f"search:{s[0].code}:{s[3].code}:2099-01-01")
     assert cached == []

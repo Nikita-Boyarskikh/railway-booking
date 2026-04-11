@@ -3,9 +3,11 @@
 from datetime import date
 
 import pytest
+from psycopg.types.range import Range
 from pytest_django import DjangoAssertNumQueries
 
 from apps.bookings.models import Booking, Order, Passenger
+from apps.core.availability import resolve_station_range
 from apps.stations.models import Station
 from apps.trains.models import Departure, Seat
 from apps.trains.services import search_departures
@@ -36,6 +38,7 @@ def test_search_departures_query_count_constant_in_bookings(
     seats = [seat, seat2]
     ranges = [(s[0], s[1]), (s[1], s[2]), (s[2], s[3])]
 
+    route = departure.train.route
     created = 0
     for i in range(10):
         s_obj = seats[i % 2]
@@ -48,6 +51,9 @@ def test_search_departures_query_count_constant_in_bookings(
             station_to=station_to,
         ).exists():
             continue
+        rng = resolve_station_range(route, station_from.id, station_to.id)
+        assert rng is not None
+        from_order, to_order = rng
         passenger = Passenger.objects.create(
             name=f"P{i}",
             passport_number=f"P{i:05d}",
@@ -61,6 +67,7 @@ def test_search_departures_query_count_constant_in_bookings(
             station_from=station_from,
             station_to=station_to,
             passenger=passenger,
+            segment_range=Range(from_order, to_order, bounds="[)"),
         )
         created += 1
 

@@ -6,8 +6,7 @@ The dependency graph is::
     stations -> connections -> route -> train -> car -> seat / seat2
                                                     -> departure
 
-An autouse fixture clears ``functools.cache`` between tests to prevent
-cross-test leaks from ``_get_station_order_maps``.
+An autouse fixture clears caches between tests to prevent cross-test leaks.
 """
 
 from collections.abc import Generator
@@ -16,28 +15,27 @@ from decimal import Decimal
 
 import pytest
 from constance.test import override_config
-from django.core.cache import cache
+from django.core.cache import caches
 from djmoney.money import Money
 
-from apps.core.availability import _get_station_order_maps
 from apps.core.types import OrderItemInput
 from apps.routes.models import Route, RouteSegment
 from apps.stations.models import Connection, Station
 from apps.trains.models import Car, Departure, Seat, Train
 
 # ---------------------------------------------------------------------------
-# Autouse: prevent functools.cache leaks between tests
+# Autouse: prevent process-level cache leaks between tests
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(autouse=True)
 def _clear_caches() -> Generator[None]:
-    """Clear Django cache and process-level functools.cache between tests."""
-    cache.clear()
-    _get_station_order_maps.cache_clear()
+    """Clear Django caches between tests."""
+    for cache in caches.all():
+        cache.clear()
     yield
-    _get_station_order_maps.cache_clear()
-    cache.clear()
+    for cache in caches.all():
+        cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +77,10 @@ def station_d(db: None) -> Station:
 
 @pytest.fixture
 def stations(
-    station_a: Station, station_b: Station, station_c: Station, station_d: Station,
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
 ) -> list[Station]:
     """All four stations as a list: [A, B, C, D]."""
     return [station_a, station_b, station_c, station_d]
@@ -93,21 +94,30 @@ def stations(
 @pytest.fixture
 def connection_ab(station_a: Station, station_b: Station) -> Connection:
     return Connection.objects.create(
-        station_from=station_a, station_to=station_b, distance_km=100, base_price=Money(200, "USD"),
+        station_from=station_a,
+        station_to=station_b,
+        distance_km=100,
+        base_price=Money(200, "USD"),
     )
 
 
 @pytest.fixture
 def connection_bc(station_b: Station, station_c: Station) -> Connection:
     return Connection.objects.create(
-        station_from=station_b, station_to=station_c, distance_km=100, base_price=Money(300, "USD"),
+        station_from=station_b,
+        station_to=station_c,
+        distance_km=100,
+        base_price=Money(300, "USD"),
     )
 
 
 @pytest.fixture
 def connection_cd(station_c: Station, station_d: Station) -> Connection:
     return Connection.objects.create(
-        station_from=station_c, station_to=station_d, distance_km=100, base_price=Money(400, "USD"),
+        station_from=station_c,
+        station_to=station_d,
+        distance_km=100,
+        base_price=Money(400, "USD"),
     )
 
 

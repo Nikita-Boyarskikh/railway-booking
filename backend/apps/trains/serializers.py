@@ -21,10 +21,12 @@ class DepartureSearchQuerySerializer(serializers.Serializer[Departure]):
     date = serializers.DateField()
 
     def to_internal_value(self, data: Any) -> Any:
-        return super().to_internal_value({
-            "date": data.get("date"),
-            **_remap_from_to(data),
-        })
+        return super().to_internal_value(
+            {
+                "date": data.get("date"),
+                **_remap_from_to(data),
+            }
+        )
 
 
 class SeatsQuerySerializer(serializers.Serializer[Seat]):

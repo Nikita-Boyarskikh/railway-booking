@@ -13,11 +13,15 @@ from apps.trains.models import Departure, Train
 
 @pytest.mark.django_db
 def test_timetable_single_segment(
-    station_a: Station, station_b: Station, connection_ab: Connection,
+    station_a: Station,
+    station_b: Station,
+    connection_ab: Connection,
 ) -> None:
     """First stop has arrival_time=None; second has correct arrival based on distance/speed."""
     route = Route.objects.create(name="A-B")
-    RouteSegment.objects.create(route=route, segment=connection_ab, order=0, stop_duration=timedelta(0))
+    RouteSegment.objects.create(
+        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0)
+    )
     train = Train.objects.create(route=route, number="S1", name="Single", avg_speed_kmh=100)
     dep = Departure.objects.create(train=train, date=date(2026, 5, 1), departure_time=time(10, 0))
 
@@ -41,9 +45,15 @@ def test_timetable_multi_segment_cumulative(
 ) -> None:
     """Travel time accumulates across segments."""
     route = Route.objects.create(name="A-D")
-    RouteSegment.objects.create(route=route, segment=connection_ab, order=0, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=route, segment=connection_bc, order=1, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=route, segment=connection_cd, order=2, stop_duration=timedelta(0))
+    RouteSegment.objects.create(
+        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0)
+    )
+    RouteSegment.objects.create(
+        route=route, segment=connection_bc, order=1, stop_duration=timedelta(0)
+    )
+    RouteSegment.objects.create(
+        route=route, segment=connection_cd, order=2, stop_duration=timedelta(0)
+    )
     train = Train.objects.create(route=route, number="M1", name="Multi", avg_speed_kmh=100)
     dep = Departure.objects.create(train=train, date=date(2026, 5, 1), departure_time=time(10, 0))
 
@@ -59,16 +69,25 @@ def test_timetable_multi_segment_cumulative(
 
 @pytest.mark.django_db
 def test_timetable_stop_duration_added(
-    station_a: Station, station_b: Station, station_c: Station,
-    connection_ab: Connection, connection_bc: Connection,
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    connection_ab: Connection,
+    connection_bc: Connection,
 ) -> None:
     """Stop duration at intermediate station delays subsequent arrival."""
     route = Route.objects.create(name="A-C-stop")
     RouteSegment.objects.create(
-        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0),
+        route=route,
+        segment=connection_ab,
+        order=0,
+        stop_duration=timedelta(0),
     )
     RouteSegment.objects.create(
-        route=route, segment=connection_bc, order=1, stop_duration=timedelta(minutes=30),
+        route=route,
+        segment=connection_bc,
+        order=1,
+        stop_duration=timedelta(minutes=30),
     )
     train = Train.objects.create(route=route, number="SD1", name="StopDur", avg_speed_kmh=100)
     dep = Departure.objects.create(train=train, date=date(2026, 5, 1), departure_time=time(10, 0))
@@ -93,7 +112,9 @@ def test_timetable_midnight_crossing(db: None) -> None:
     """Departure near midnight correctly crosses into the next day."""
     s1 = Station.objects.create(name="Night1", code="N1")
     s2 = Station.objects.create(name="Night2", code="N2")
-    conn = Connection.objects.create(station_from=s1, station_to=s2, distance_km=200, base_price=Money(100, "USD"))
+    conn = Connection.objects.create(
+        station_from=s1, station_to=s2, distance_km=200, base_price=Money(100, "USD")
+    )
     route = Route.objects.create(name="Night")
     RouteSegment.objects.create(route=route, segment=conn, order=0, stop_duration=timedelta(0))
     train = Train.objects.create(route=route, number="NI1", name="Night", avg_speed_kmh=100)
@@ -108,11 +129,15 @@ def test_timetable_midnight_crossing(db: None) -> None:
 
 @pytest.mark.django_db
 def test_timetable_iso_format_minutes(
-    station_a: Station, station_b: Station, connection_ab: Connection,
+    station_a: Station,
+    station_b: Station,
+    connection_ab: Connection,
 ) -> None:
     """ISO strings are truncated to minutes (no seconds)."""
     route = Route.objects.create(name="A-B-iso")
-    RouteSegment.objects.create(route=route, segment=connection_ab, order=0, stop_duration=timedelta(0))
+    RouteSegment.objects.create(
+        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0)
+    )
     train = Train.objects.create(route=route, number="ISO1", name="Iso", avg_speed_kmh=100)
     dep = Departure.objects.create(train=train, date=date(2026, 5, 1), departure_time=time(9, 15))
 

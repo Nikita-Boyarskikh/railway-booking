@@ -9,7 +9,11 @@ from datetime import date as date_cls
 from djmoney.money import Money
 
 from apps.core.availability import free_seat_ids, resolve_station_range
-from apps.core.cache import cached_list_seats, cached_search_departures
+from apps.core.cache import (
+    cached_list_seats,
+    cached_search_departures,
+    memoized_segment_range_subtotal,
+)
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
 from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse
@@ -59,6 +63,13 @@ def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[
             "train__cars__seats",
         )
     )
+
+    # Multiple departures share a route, so cache the (route, from, to) subtotal
+    # across the loop rather than recomputing it per departure.
+    get_segment_range_subtotal = memoized_segment_range_subtotal(
+        lambda route_id, from_order, to_order: calc_segment_range_subtotal(route, from_order, to_order),
+    )
+
     for dep in qs:
         route = dep.train.route
         rng = resolve_station_range(route, from_id, to_id)
@@ -75,7 +86,7 @@ def _search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[
         free_ids = free_seat_ids(dep, from_order, to_order)
         free_count = len(free_ids)
 
-        subtotal = calc_segment_range_subtotal(route, from_order, to_order)
+        subtotal = get_segment_range_subtotal(route.id, from_order, to_order)
 
         min_price: Money | None = None
         for car in dep.train.cars.all():

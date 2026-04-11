@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from apps.core.db_utils import use_prefetched_if_available
 from apps.trains.models import Departure
 
 from .types import TimetableStop
@@ -11,11 +12,19 @@ def compute_timetable(departure: Departure) -> list[TimetableStop]:
     Each entry is a ``{station_id, arrival_time, departure_time}``
     dict. Times are ISO strings truncated to minutes. Computed from the train's
     average speed and the per-segment stop durations defined on ``RouteSegment``.
+
+    Uses prefetched ``route_segments`` if available so that callers iterating
+    over many departures (e.g. ``_search_departures``) do not issue N+1 queries.
     """
+    route = departure.train.route
     route_segments = list(
-        departure.train.route.route_segments.select_related(
-            "segment__station_from", "segment__station_to"
-        ).order_by("order")
+        use_prefetched_if_available(
+            route,
+            "route_segments",
+            lambda qs: qs.select_related("segment__station_from", "segment__station_to").order_by(
+                "order"
+            ),
+        )
     )
 
     cursor = datetime.combine(departure.date, departure.departure_time)

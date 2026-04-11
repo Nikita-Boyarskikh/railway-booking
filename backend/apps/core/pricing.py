@@ -10,7 +10,6 @@ The booking price for a segment range is::
 multiplied by any factor.
 """
 
-
 from constance import config
 from django.db.models import QuerySet
 from djmoney.money import Money
@@ -35,7 +34,7 @@ def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) ->
         route, "route_segments", lambda qs: qs.select_related("segment")
     )
     return sum(
-        (rs.segment.base_price for rs in rss if from_order <= rs.order < to_order),
+        (rs.segment.base_price for rs in sorted(rss, key=lambda x: x.order) if from_order <= rs.order < to_order),
         Money(currency=DEFAULT_CURRENCY),
     )
 
