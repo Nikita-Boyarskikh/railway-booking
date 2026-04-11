@@ -112,7 +112,7 @@ def test_search_departures_skips_train_not_on_route(
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_invalid_station_codes(departure: Departure) -> None:
     """Unknown station codes return empty cars list."""
-    result = list_seats(departure, "UNKNOWN", "ALSO")
+    result = list_seats(departure.uuid, "UNKNOWN", "ALSO")
     assert result == {"cars": []}
 
 
@@ -122,7 +122,7 @@ def test_list_seats_invalid_station_code_order(
     stations: list[Station], departure: Departure
 ) -> None:
     """Station codes in the wrong order (to before from) also return empty cars list."""
-    result = list_seats(departure, stations[-1].code, stations[0].code)
+    result = list_seats(departure.uuid, stations[-1].code, stations[0].code)
     assert result == {"cars": []}
 
 
@@ -139,7 +139,7 @@ def test_list_seats_groups_by_car(
     car2 = Car.objects.create(train=train, number=2)
     Seat.objects.create(car=car2, number=1)
 
-    result = list_seats(departure, stations[0].code, stations[3].code)
+    result = list_seats(departure.uuid, stations[0].code, stations[3].code)
     assert len(result["cars"]) == 2
     car_numbers = {c["number"] for c in result["cars"]}
     assert car_numbers == {1, 2}
@@ -161,7 +161,7 @@ def test_list_seats_status_after_booking(
         stations[3].code,
         [make_order_item(car.number, seat.number)],
     )
-    result = list_seats(departure, stations[0].code, stations[3].code)
+    result = list_seats(departure.uuid, stations[0].code, stations[3].code)
     seats_out = result["cars"][0]["seats"]
     by_number = {s["number"]: s for s in seats_out}
     assert by_number[seat.number]["status"] == "occupied"
@@ -179,7 +179,7 @@ def test_list_seats_price_reflects_car_factor(
     expensive_car = Car.objects.create(train=train, number=10, price_factor=Decimal("1.5"))
     Seat.objects.create(car=expensive_car, number=1)
 
-    result = list_seats(departure, stations[0].code, stations[3].code)
+    result = list_seats(departure.uuid, stations[0].code, stations[3].code)
     car_out = next(c for c in result["cars"] if c["number"] == 10)
     # base=100 + segments=900, car_factor=1.5 -> 100 + 900*1.5 = 1450
     assert car_out["seats"][0]["price"] == "$1,450.00"

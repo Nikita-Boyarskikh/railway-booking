@@ -3,9 +3,7 @@ from typing import Any
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from apps.bookings.models import Gender
-
-from .models import Booking, Order, Passenger
+from apps.bookings.models import Booking, Gender, Order, Passenger
 
 
 class PassengerSerializer(serializers.ModelSerializer[Passenger]):

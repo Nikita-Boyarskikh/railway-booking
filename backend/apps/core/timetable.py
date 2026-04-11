@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 
 from apps.core.db_utils import use_prefetched_if_available
+from apps.core.types import TimetableStop
+from apps.routes.services import get_route_segments
 from apps.trains.models import Departure
-
-from .types import TimetableStop
 
 
 def compute_timetable(departure: Departure) -> list[TimetableStop]:
@@ -17,15 +17,7 @@ def compute_timetable(departure: Departure) -> list[TimetableStop]:
     over many departures (e.g. ``_search_departures``) do not issue N+1 queries.
     """
     route = departure.train.route
-    route_segments = list(
-        use_prefetched_if_available(
-            route,
-            "route_segments",
-            lambda qs: qs.select_related("segment__station_from", "segment__station_to").order_by(
-                "order"
-            ),
-        )
-    )
+    route_segments = get_route_segments(route)
 
     cursor = datetime.combine(departure.date, departure.departure_time)
     stops: list[TimetableStop] = []

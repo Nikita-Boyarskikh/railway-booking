@@ -6,13 +6,7 @@ import pytest
 from django.test.testcases import TestCase
 
 from apps.bookings.services import create_order
-from apps.core.cache import (
-    _SEATS_TMPL,
-    STATIONS_KEY,
-    bump_departure_generation,
-    get_departure_generation,
-    redis_cache,
-)
+from apps.core.cache import DepartureGenerationCache, SearchCache, SeatsCache, StationsCache
 from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat
@@ -28,21 +22,21 @@ def test_stations_cache_invalidated_on_station_change(station_a: Station) -> Non
     ``captureOnCommitCallbacks(execute=True)`` to drive the callbacks inside
     the test transaction (which never actually commits).
     """
-    redis_cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL"}], timeout=300)
+    StationsCache.set(StationsCache.key(), [{"name": "stale", "code": "STL"}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         Station.objects.create(name="New", code="NEW")
-    assert redis_cache.get(STATIONS_KEY) is None
+    assert StationsCache.get() is None
 
-    redis_cache.set(STATIONS_KEY, [{"name": "stale", "code": "STL2"}], timeout=300)
+    StationsCache.set(StationsCache.key(), [{"name": "stale", "code": "STL2"}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         station_a.name = "Modified"
         station_a.save()
-    assert redis_cache.get(STATIONS_KEY) is None
+    assert StationsCache.get() is None
 
-    redis_cache.set(STATIONS_KEY, [{"name": "stale2", "code": "STL1"}], timeout=300)
+    StationsCache.set(StationsCache.key(), [{"name": "stale2", "code": "STL1"}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         Station.objects.filter(code="NEW").delete()
-    assert redis_cache.get(STATIONS_KEY) is None
+    assert StationsCache.get() is None
 
 
 @pytest.mark.django_db(transaction=True)
@@ -54,17 +48,16 @@ def test_list_seats_cached_and_invalidated_on_booking(
     departure: Departure,
 ) -> None:
     """``list_seats`` hits the cache on repeat calls; a booking bumps the generation."""
-    first = list_seats(departure, stations[0].code, stations[3].code)
+    first = list_seats(departure.uuid, stations[0].code, stations[3].code)
     # Mutate the in-cache entry to prove the next call returns *this* value.
     cache_hit_marker = SeatsResponse(
         cars=[CarDict(number=1, car_type="common", features={"from_cache": 1}, seats=[])]
     )
     # Find the key the service stored under and overwrite it.
-    gen = get_departure_generation(str(departure.uuid))
-    key = _SEATS_TMPL.format(uuid=departure.uuid, from_=stations[0].code, to=stations[3].code, gen=gen)
-    redis_cache.set(key, cache_hit_marker, timeout=60)
+    gen = DepartureGenerationCache.get(departure.uuid)
+    SeatsCache.set(SeatsCache.key(departure.uuid, stations[0].code, stations[3].code), cache_hit_marker)
 
-    second = list_seats(departure, stations[0].code, stations[3].code)
+    second = list_seats(departure.uuid, stations[0].code, stations[3].code)
     assert second == cache_hit_marker, "expected cache hit on second call"
     assert second != first
 
@@ -75,8 +68,8 @@ def test_list_seats_cached_and_invalidated_on_booking(
         stations[1].code,
         [make_order_item(car.number, seat.number)],
     )
-    assert get_departure_generation(str(departure.uuid)) > gen
-    third = list_seats(departure, stations[0].code, stations[3].code)
+    assert DepartureGenerationCache.get(departure.uuid) > gen
+    third = list_seats(departure.uuid, stations[0].code, stations[3].code)
     assert third != cache_hit_marker, "expected fresh data after generation bump"
     assert "cars" in third
 
@@ -86,16 +79,14 @@ def test_list_seats_cached_and_invalidated_on_booking(
 def test_search_departures_cached(stations: list[Station], departure: Departure) -> None:
     """``search_departures`` caches its output under ``search:{from}:{to}:{date}``."""
     s = stations
+    today = date(2026, 5, 1)
 
-    first = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+    first = search_departures(s[0].code, s[3].code, today)
     assert first
-    cached = redis_cache.get(f"search:{s[0].code}:{s[3].code}:2026-05-01")
+    cached = SearchCache.get(s[0].code, s[3].code, today)
     assert cached == first
     # Poison the cache; subsequent call must return the poisoned value.
-    redis_cache.set(
-        f"search:{s[0].code}:{s[3].code}:2026-05-01",
-        [
-            DepartureSummary(
+    SearchCache.set(SearchCache.key(s[0].code, s[3].code, today), [DepartureSummary(
                 uuid="poisoned",
                 train_number="X",
                 train_name="X",
@@ -105,32 +96,31 @@ def test_search_departures_cached(stations: list[Station], departure: Departure)
                 min_price=None,
             )
         ],
-        timeout=30,
     )
     second = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
     assert second[0]["uuid"] == "poisoned"
 
 
 # ---------------------------------------------------------------------------
-# bump_departure_generation edge cases
+# DepartureGenerationCache edge cases
 # ---------------------------------------------------------------------------
 
 
 def test_bump_departure_generation_from_zero() -> None:
     """First bump on a fresh key returns 1."""
-    assert get_departure_generation("brand-new-uuid") == 0
-    result = bump_departure_generation("brand-new-uuid")
+    assert DepartureGenerationCache.get("brand-new-uuid") == 0
+    result = DepartureGenerationCache.incr("brand-new-uuid")
     assert result == 1
-    assert get_departure_generation("brand-new-uuid") == 1
+    assert DepartureGenerationCache.get("brand-new-uuid") == 1
 
 
 def test_bump_departure_generation_increments() -> None:
     """Successive bumps increment the counter."""
-    bump_departure_generation("inc-uuid")
-    bump_departure_generation("inc-uuid")
-    result = bump_departure_generation("inc-uuid")
+    DepartureGenerationCache.incr("inc-uuid")
+    DepartureGenerationCache.incr("inc-uuid")
+    result = DepartureGenerationCache.incr("inc-uuid")
     assert result == 3
-    assert get_departure_generation("inc-uuid") == 3
+    assert DepartureGenerationCache.get("inc-uuid") == 3
 
 
 # ---------------------------------------------------------------------------
@@ -145,9 +135,10 @@ def test_search_departures_empty_result_cached(
 ) -> None:
     """An empty departure list is still cached (empty list != None)."""
     s = stations
+    future = date(2099, 1, 1)
     # Search for a date with no departures
-    result = search_departures(s[0].code, s[3].code, date(2099, 1, 1))
+    result = search_departures(s[0].code, s[3].code, future)
     assert result == []
     # The empty list should be in the cache
-    cached = redis_cache.get(f"search:{s[0].code}:{s[3].code}:2099-01-01")
+    cached = SearchCache.get(s[0].code, s[3].code, future)
     assert cached == []

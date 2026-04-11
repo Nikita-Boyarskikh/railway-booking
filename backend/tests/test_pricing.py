@@ -9,7 +9,6 @@ from apps.trains.models import Car, Seat
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("base_price")
 @pytest.mark.parametrize(
     ("from_order", "to_order", "route_factor", "car_factor", "seat_factor", "expected"),
     [
@@ -57,5 +56,6 @@ def test_pricing(
     seat.save()
     seat.car = car  # refresh cached relation
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
-    price = calc_booking_price(subtotal, seat)
+    base_price = Money(100, "USD")
+    price = calc_booking_price(base_price, subtotal, seat)
     assert price == Money(expected, "USD")

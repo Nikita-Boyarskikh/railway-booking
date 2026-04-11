@@ -4,9 +4,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Order
-from .serializers import CreateOrderSerializer, OrderSerializer
-from .services import InvalidRequestError, SeatUnavailableError, create_order
+from apps.bookings.models import Order
+from apps.bookings.serializers import CreateOrderSerializer, OrderSerializer
+from apps.bookings.services import InvalidRequestError, SeatUnavailableError, create_order
 
 
 class OrderCreateView(APIView):

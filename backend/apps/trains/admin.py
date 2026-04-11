@@ -7,7 +7,7 @@ from django.contrib import admin
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
-from .models import Car, Departure, Seat, Train
+from apps.trains.models import Car, Departure, Seat, Train
 
 
 class BaseCarAdminForm(forms.ModelForm[Car]):

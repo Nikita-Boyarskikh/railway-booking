@@ -86,9 +86,6 @@ STORAGES = {
 
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    },
-    "redis": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
         "TIMEOUT": 60,
@@ -115,6 +112,7 @@ REST_FRAMEWORK = {
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_DATABASE_CACHE_BACKEND = "default"
 CONSTANCE_ADDITIONAL_FIELDS = {
     "decimal_field": [
         "django.forms.fields.DecimalField",

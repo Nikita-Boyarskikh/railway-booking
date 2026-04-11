@@ -56,3 +56,10 @@ class OrderItemInput(TypedDict):
     passenger_passport: str
     passenger_gender: str
     passenger_birth_date: str
+
+
+class StationDict(TypedDict):
+    """Station payload returned from the stations list API."""
+
+    name: str
+    code: str

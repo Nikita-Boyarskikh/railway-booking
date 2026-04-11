@@ -1,22 +1,21 @@
 """Service layer for the bookings app: order creation and validation."""
-
 import uuid as uuid_mod
 
+from constance import config
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 from djmoney.money import Money
 from psycopg.types.range import Range
 
-from apps.core.availability import resolve_station_range
-from apps.core.cache import bump_departure_generation
+from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
+from apps.core.cache import DepartureGenerationCache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.types import OrderItemInput
-from apps.stations.models import Station
-from apps.trains.models import Departure, Seat
+from apps.routes.services import resolve_station_range
+from apps.stations.services import resolve_station_codes
+from apps.trains.models import Departure, Seat, Train
 from config.settings import DEFAULT_CURRENCY
-
-from .models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 
 
 class SeatUnavailableError(Exception):
@@ -35,6 +34,24 @@ class SeatUnavailableError(Exception):
 
 class InvalidRequestError(Exception):
     """Raised for business-logic errors during order creation (maps to 400)."""
+
+
+def get_seat(train: Train, car_number: int, seat_number: int) -> Seat:
+    """Check that a seat exists on the train and is available for booking."""
+    try:
+        seat = Seat.objects.select_related("car__train__route").get(
+            car__train=train,
+            car__number=car_number,
+            number=seat_number,
+        )
+    except Seat.DoesNotExist as e:
+        raise InvalidRequestError(
+            _("Seat car={car_number} seat={seat_number} not found on this train").format(
+                car_number=car_number,
+                seat_number=seat_number,
+            )
+        ) from e
+    return seat
 
 
 @transaction.atomic
@@ -62,29 +79,27 @@ def create_order(
         SeatUnavailableError: If a requested seat is already booked for the range.
     """
     try:
-        departure = Departure.objects.select_related("train__route").get(uuid=departure_uuid)
+        departure = Departure.objects.select_related("train__route").prefetch_related(
+            "train__route__route_segments__segment",
+        ).get(uuid=departure_uuid)
     except (Departure.DoesNotExist, ValidationError) as e:
         raise InvalidRequestError(_("Departure not found")) from e
 
-    stations = {
-        s.code: s for s in Station.objects.filter(code__in=[station_from_code, station_to_code])
-    }
-    station_from = stations.get(station_from_code)
-    station_to = stations.get(station_to_code)
+    station_from, station_to = resolve_station_codes(station_from_code, station_to_code)
     if not station_from or not station_to:
         raise InvalidRequestError(_("Unknown station code"))
 
     route = departure.train.route
-    rng = resolve_station_range(route, station_from.id, station_to.id)
-    if not rng:
+    from_order, to_order = resolve_station_range(route, station_from.pk, station_to.pk)
+    if not from_order and not to_order:
         raise InvalidRequestError(
             _("Route does not cover the requested station_from → station_to segment")
         )
-    from_order, to_order = rng
     trip_range: Range[int] = Range(from_order, to_order, bounds="[)")
 
     # Subtotal depends only on (route, from_order, to_order), so compute it
     # once for all items instead of repeating the RouteSegment scan per seat.
+    base_price = Money(config.BASE_PRICE, currency=DEFAULT_CURRENCY)
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
 
     # Sort items by (car_number, seat_number) so two concurrent multi-seat
@@ -96,25 +111,9 @@ def create_order(
     total = Money(currency=DEFAULT_CURRENCY)
 
     for item in sorted_items:
-        car_number = item["car_number"]
-        seat_number = item["seat_number"]
-
-        try:
-            seat = Seat.objects.select_related("car__train").get(
-                car__train=departure.train,
-                car__number=car_number,
-                number=seat_number,
-            )
-        except Seat.DoesNotExist as e:
-            raise InvalidRequestError(
-                _("Seat car={car_number} seat={seat_number} not found on this train").format(
-                    car_number=car_number,
-                    seat_number=seat_number,
-                )
-            ) from e
-
+        seat = get_seat(departure.train, item["car_number"], item["seat_number"])
         resolved.append((item, seat))
-        total += calc_booking_price(subtotal, seat)
+        total += calc_booking_price(base_price, subtotal, seat)
 
     # Total is known up-front, so insert the order with its final price in a
     # single statement rather than INSERT followed by UPDATE.
@@ -143,7 +142,6 @@ def create_order(
                 raise # should never happen if the DB schema is correct
             raise SeatUnavailableError(seat.car.number, seat.number) from e
 
-    dep_uuid = str(departure.uuid)
-    transaction.on_commit(lambda: bump_departure_generation(dep_uuid))
+    transaction.on_commit(lambda: DepartureGenerationCache.incr(departure.uuid))
 
     return order

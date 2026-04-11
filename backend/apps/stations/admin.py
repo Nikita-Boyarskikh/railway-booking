@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .models import Connection, Station
+from apps.stations.models import Connection, Station
 
 
 @admin.register(Connection)

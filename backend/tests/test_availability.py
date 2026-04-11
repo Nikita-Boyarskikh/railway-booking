@@ -7,8 +7,9 @@ from psycopg.types.range import Range
 
 from apps.bookings.models import Booking, Order, Passenger
 from apps.bookings.services import SeatUnavailableError, create_order
-from apps.core.availability import free_seat_ids, resolve_station_range
+from apps.core.availability import free_seat_ids
 from apps.routes.models import Route
+from apps.routes.services import resolve_station_range
 from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat
 from tests.conftest import make_order_item
@@ -24,7 +25,7 @@ def test_resolve_station_range_valid(
     stations: list[Station],
 ) -> None:
     """A->D on the full route returns (0, 3)."""
-    result = resolve_station_range(route, stations[0].id, stations[3].id)
+    result = resolve_station_range(route, stations[0].pk, stations[3].pk)
     assert result == (0, 3)
 
 
@@ -45,7 +46,7 @@ def test_resolve_station_range_reversed(
 ) -> None:
     """D->A (reverse direction) returns None."""
     result = resolve_station_range(route, stations[3].id, stations[0].id)
-    assert result is None
+    assert result == (None, None)
 
 
 @pytest.mark.django_db
@@ -55,7 +56,7 @@ def test_resolve_station_range_same_station(
 ) -> None:
     """A->A returns None."""
     result = resolve_station_range(route, stations[0].id, stations[0].id)
-    assert result is None
+    assert result == (None, None)
 
 
 @pytest.mark.django_db
@@ -63,7 +64,7 @@ def test_resolve_station_range_not_on_route(route: Route, db: None) -> None:
     """Station not on the route returns None."""
     orphan = Station.objects.create(name="Orphan", code="ORP")
     result = resolve_station_range(route, orphan.id, orphan.id)
-    assert result is None
+    assert result == (None, None)
 
 
 # ---------------------------------------------------------------------------
@@ -85,9 +86,8 @@ def _book(
         gender="male",
         birth_date=date(1990, 1, 1),
     )
-    rng = resolve_station_range(departure.train.route, station_from.id, station_to.id)
-    assert rng is not None, "test fixture requested an impossible route segment"
-    from_order, to_order = rng
+    from_order, to_order = resolve_station_range(departure.train.route, station_from.id, station_to.id)
+    assert from_order is not None and to_order is not None, "test fixture requested an impossible route segment"
     Booking.objects.create(
         order=order,
         departure=departure,

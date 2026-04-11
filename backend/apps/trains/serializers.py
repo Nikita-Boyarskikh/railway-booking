@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.trains.models import Departure, Seat
 
 
-def _remap_from_to(data: Any) -> dict[str, Any]:
+def _remap_from_to(data: dict[str, Any]) -> dict[str, Any]:
     """Remap public ``from``/``to`` params to internal ``from_code``/``to_code``."""
     return {
         "from_code": data.get("from"),

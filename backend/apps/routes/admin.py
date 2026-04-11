@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Route, RouteSegment
+from apps.routes.models import Route, RouteSegment
 
 
 class RouteSegmentInline(admin.TabularInline[RouteSegment, Route]):

@@ -10,12 +10,10 @@ The booking price for a segment range is::
 multiplied by any factor.
 """
 
-from constance import config
-from django.db.models import QuerySet
 from djmoney.money import Money
 
-from apps.core.db_utils import use_prefetched_if_available
-from apps.routes.models import Route, RouteSegment
+from apps.routes.models import Route
+from apps.routes.services import get_route_segments
 from apps.trains.models import Seat
 from config.settings import DEFAULT_CURRENCY
 
@@ -30,16 +28,17 @@ def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) ->
     This allows caching the subtotal for a route and segment range independently
     of the seat/booking-specific factors applied in :func:`calc_booking_price`.
     """
-    rss: QuerySet[RouteSegment] = use_prefetched_if_available(
-        route, "route_segments", lambda qs: qs.select_related("segment")
-    )
     return sum(
-        (rs.segment.base_price for rs in sorted(rss, key=lambda x: x.order) if from_order <= rs.order < to_order),
+        (
+            route_segment.segment.base_price
+            for route_segment in get_route_segments(route)
+            if from_order <= route_segment.order < to_order
+        ),
         Money(currency=DEFAULT_CURRENCY),
     )
 
 
-def calc_booking_price(subtotal: Money, seat: Seat) -> Money:
+def calc_booking_price(base_price: Money, subtotal: Money, seat: Seat) -> Money:
     """Return the final price for one seat on a booking with a given segment range subtotal.
 
     NOTE: Use :func:`calc_segment_range_subtotal` to get subtotal from a route and segment range.
@@ -53,4 +52,4 @@ def calc_booking_price(subtotal: Money, seat: Seat) -> Money:
         * seat.car.price_factor
         * seat.price_factor
     )
-    return Money(config.BASE_PRICE, currency=DEFAULT_CURRENCY) + multiplied
+    return base_price + multiplied

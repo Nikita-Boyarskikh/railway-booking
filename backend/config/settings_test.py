@@ -1,4 +1,4 @@
-from .settings import *  # noqa: F403
+from config.settings import *  # noqa: F403
 
 DEBUG = True
 SECRET_KEY = "dev-insecure-secret-key-change-me"
@@ -11,7 +11,5 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
-    "redis": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    },
 }
+CONSTANCE_DATABASE_CACHE_BACKEND = None

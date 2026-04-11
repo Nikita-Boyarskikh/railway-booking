@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import DepartureSearchView, DepartureSeatsView
+from apps.trains.views import DepartureSearchView, DepartureSeatsView
 
 urlpatterns = [
     path("departures/", DepartureSearchView.as_view(), name="departure-search"),
