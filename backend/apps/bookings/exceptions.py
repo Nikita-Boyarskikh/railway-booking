@@ -1,15 +1,17 @@
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.exceptions import RailwayBookingError
 
-class DepartureNotFoundError(Exception):
-    """Seat with given number does not found on this train"""
+
+class DepartureNotFoundError(RailwayBookingError):
+    """Raised when a requested departure does not found on given train."""
 
     def __init__(self) -> None:
         super().__init__(_("Departure not found"))
 
 
-class SeatUnavailableError(Exception):
-    """Raised when a requested seat was taken between validation and commit."""
+class SeatUnavailableError(RailwayBookingError):
+    """Raised when a requested seat does not found on given train."""
 
     def __init__(self, car_number: int, seat_number: int) -> None:
         super().__init__(
@@ -22,7 +24,7 @@ class SeatUnavailableError(Exception):
         self.seat_number = seat_number
 
 
-class SeatNotFoundError(Exception):
+class SeatNotFoundError(RailwayBookingError):
     """Raised when a seat with given number does not found on given train."""
 
     def __init__(self, car_number: int, seat_number: int) -> None:

@@ -12,7 +12,6 @@ from constance import config
 from django.conf import settings
 from django.db.models import QuerySet
 from djmoney.money import Money
-from rest_framework.generics import get_object_or_404
 
 from apps.core.availability import free_seat_ids
 from apps.core.cache import SearchCache, SeatsCache
@@ -23,6 +22,7 @@ from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
+from apps.bookings.exceptions import DepartureNotFoundError
 
 
 def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Departure]:
@@ -99,10 +99,12 @@ def search_departures(
 @SeatsCache.wrap
 def list_seats(departure_uuid: UUID | str, from_code: str, to_code: str) -> SeatsResponse:
     """Return seats for ``departure`` grouped by car with per-seat price/status."""
-    departure = get_object_or_404(
-        _select_related_for_departure_qs(Departure.objects.all()),
-        uuid=departure_uuid,
-    )
+    try:
+        departure = _select_related_for_departure_qs(Departure.objects.all()).get(
+            uuid=departure_uuid
+        )
+    except Departure.DoesNotExist as e:
+        raise DepartureNotFoundError() from e
 
     from_station, to_station = resolve_station_codes(from_code, to_code)
 

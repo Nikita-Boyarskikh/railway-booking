@@ -2,6 +2,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.bookings.exceptions import DepartureNotFoundError
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
 from apps.trains.serializers import DepartureSearchQuerySerializer, SeatsQuerySerializer
@@ -33,5 +34,7 @@ class DepartureSeatsView(APIView):
         data = query.validated_data
         try:
             return Response(list_seats(uuid, data["from_code"], data["to_code"]))
+        except DepartureNotFoundError as e:
+            return Response({"detail": str(e)}, status=404)
         except (InvalidStationCodeError, InvalidStationRangeError) as e:
             return Response({"detail": str(e)}, status=400)
