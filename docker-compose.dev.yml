@@ -6,7 +6,7 @@ services:
   backend:
     build:
       args:
-        NO_DEV_DEPS: ''
+        NO_DEV_DEPS: 0
     entrypoint: ./entrypoint.sh
     environment:
       DJANGO_DEBUG: 1
@@ -15,20 +15,13 @@ services:
     develop:
       watch:
         - action: sync
-          initial_sync: true
           path: ./backend
           target: /app
           ignore:
             - .venv
-            - uv.lock
-            - pyproject.toml
         - action: rebuild
-          initial_sync: true
           path: ./backend/uv.lock
         - action: rebuild
-          path: ./backend/.venv
-        - action: rebuild
-          initial_sync: true
           path: ./backend/pyproject.toml
 
   frontend:

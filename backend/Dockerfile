@@ -14,8 +14,8 @@ RUN pip install uv
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
-ARG NO_DEV_DEPS
-RUN uv sync --frozen ${NO_DEV_DEPS:+--no-dev}
+ARG NO_DEV_DEPS=1
+RUN if [ "$NO_DEV_DEPS" = "1" ]; then uv sync --frozen --no-dev; else uv sync --frozen; fi
 
 # ---- runtime ----------------------------------------------------------------
 FROM python:3.14-slim AS runtime
