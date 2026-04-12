@@ -1,11 +1,14 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import IntegerRangeField, RangeOperators
 from django.db import models
-from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
+
+if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
 
 BOOKING_NO_OVERLAP_CONSTRAINT = "booking_no_seat_overlap"
 
@@ -37,7 +40,7 @@ class Order(models.Model):
     total_price = MoneyField(max_digits=12, decimal_places=2, default=0)
     features = models.JSONField(default=dict, blank=True)
 
-    bookings: QuerySet[Booking]
+    bookings: RelatedManager[Booking]
 
     def __str__(self) -> str:
         return _("Order #{uuid}").format(uuid=self.uuid)

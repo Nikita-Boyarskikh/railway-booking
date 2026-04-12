@@ -1,13 +1,16 @@
 """Django admin registrations for the trains app."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django import forms
 from django.contrib import admin
-from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
 from apps.trains.models import Car, Departure, Seat, Train
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.http import HttpRequest
 
 
 class BaseCarAdminForm(forms.ModelForm[Car]):
@@ -64,7 +67,7 @@ class TrainAdmin(admin.ModelAdmin[Train]):
     search_fields = ("number", "name", "route__name")
     ordering = ("number",)
 
-    def get_queryset(self, request):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Train]:
         return super().get_queryset(request).select_related("route")
 
     def save_formset(self, request: HttpRequest, form: Any, formset: Any, change: Any) -> None:
@@ -103,7 +106,7 @@ class CarAdmin(admin.ModelAdmin[Car]):
     ordering = ("train", "number")
     list_filter = ("car_type",)
 
-    def get_queryset(self, request):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Car]:
         return super().get_queryset(request).select_related("train")
 
     def save_model(self, request: HttpRequest, obj: Car, form: Any, change: Any) -> None:
@@ -122,7 +125,7 @@ class SeatAdmin(admin.ModelAdmin[Seat]):
     ordering = ("car__train__number", "car__number", "number")
     list_filter = ("seat_type",)
 
-    def get_queryset(self, request):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Seat]:
         return super().get_queryset(request).select_related("car__train")
 
 
@@ -136,5 +139,5 @@ class DepartureAdmin(admin.ModelAdmin[Departure]):
     ordering = ("date", "departure_time", "train")
     list_filter = ("date",)
 
-    def get_queryset(self, request):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Departure]:
         return super().get_queryset(request).select_related("train")

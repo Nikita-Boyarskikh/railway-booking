@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-from apps.core.types import TimetableStop
 from apps.routes.services import get_route_segments
-from apps.trains.models import Departure
+
+if TYPE_CHECKING:
+    from apps.core.types import TimetableStop
+    from apps.trains.models import Departure
 
 
 def _format_time(dt: datetime) -> str:

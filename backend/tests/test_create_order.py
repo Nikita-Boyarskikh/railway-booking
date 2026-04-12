@@ -1,6 +1,7 @@
 """Tests for ``apps.bookings.services.create_order`` — error branches and happy paths."""
 
 import uuid as uuid_mod
+from typing import TYPE_CHECKING
 
 import pytest
 from djmoney.money import Money
@@ -11,8 +12,10 @@ from apps.bookings.services import create_order
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
 from apps.stations.models import Station
-from apps.trains.models import Car, Departure, Seat
 from tests.conftest import make_order_item
+
+if TYPE_CHECKING:
+    from apps.trains.models import Car, Departure, Seat
 
 # ---------------------------------------------------------------------------
 # Validation errors

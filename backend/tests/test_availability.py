@@ -1,17 +1,21 @@
 """Tests for seat availability: resolve_station_range, free_seat_ids, and create_order integration."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from apps.bookings.exceptions import SeatUnavailableError
-from apps.bookings.models import Passenger
 from apps.bookings.services import create_order
 from apps.core.availability import free_seat_ids
 from apps.routes.exceptions import InvalidStationRangeError
-from apps.routes.models import Route
 from apps.routes.services import resolve_station_range
 from apps.stations.models import Station
-from apps.trains.models import Car, Departure, Seat
 from tests.conftest import create_booking, make_order_item
+
+if TYPE_CHECKING:
+    from apps.bookings.models import Passenger
+    from apps.routes.models import Route
+    from apps.trains.models import Car, Departure, Seat
 
 # ---------------------------------------------------------------------------
 # resolve_station_range — unit tests

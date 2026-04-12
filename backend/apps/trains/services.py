@@ -4,16 +4,14 @@ Covers departure search and seat listing. Keeps all business logic out of
 views and serializers so it can be tested and reused.
 """
 
-import datetime
-from functools import cache
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from constance import config
 from django.conf import settings
-from django.db.models import QuerySet
 from djmoney.money import Money
 
 from apps.core.availability import free_seat_ids
+from apps.bookings.exceptions import DepartureNotFoundError
 from apps.core.cache import SearchCache, SeatsCache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
@@ -22,7 +20,13 @@ from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
-from apps.bookings.exceptions import DepartureNotFoundError
+
+if TYPE_CHECKING:
+    import datetime
+    from functools import cache
+    from uuid import UUID
+
+    from django.db.models import QuerySet
 
 
 def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Departure]:

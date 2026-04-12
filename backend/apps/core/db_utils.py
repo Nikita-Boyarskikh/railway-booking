@@ -1,6 +1,9 @@
-from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING
 
 from django.db.models import Model, QuerySet
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def is_prefetched(model: Model, related_name: str) -> bool:

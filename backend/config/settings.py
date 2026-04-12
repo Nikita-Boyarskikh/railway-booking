@@ -103,11 +103,21 @@ CACHES = {
 # ---------------------------------------------------------------------------
 # Application-level cache TTLs (seconds)
 # ---------------------------------------------------------------------------
-CACHE_TTL_STATIONS = int(os.environ.get("CACHE_TTL_STATIONS", "0")) or 24 * 60 * 60  # 1 day — invalidated by signals
-CACHE_TTL_SEARCH = int(os.environ.get("CACHE_TTL_SEARCH", "0")) or 30  # departure search — coarse staleness acceptable
-CACHE_TTL_SEATS = int(os.environ.get("CACHE_TTL_SEATS", "0")) or 30  # seat listing — generation-keyed, stale entries orphan
-CACHE_TTL_STATION_ORDER_MAPS = int(os.environ.get("CACHE_TTL_STATION_ORDER_MAPS", "0")) or 60  # route station-order maps — signal-invalidated
-GENERATION_CACHE_TTL = int(os.environ.get("GENERATION_CACHE_TTL", "0")) or 7 * 24 * 60 * 60  # 7 days
+CACHE_TTL_STATIONS = (
+    int(os.environ.get("CACHE_TTL_STATIONS", "0")) or 24 * 60 * 60
+)  # 1 day — invalidated by signals
+CACHE_TTL_SEARCH = (
+    int(os.environ.get("CACHE_TTL_SEARCH", "0")) or 30
+)  # departure search — coarse staleness acceptable
+CACHE_TTL_SEATS = (
+    int(os.environ.get("CACHE_TTL_SEATS", "0")) or 30
+)  # seat listing — generation-keyed, stale entries orphan
+CACHE_TTL_STATION_ORDER_MAPS = (
+    int(os.environ.get("CACHE_TTL_STATION_ORDER_MAPS", "0")) or 60
+)  # route station-order maps — signal-invalidated
+GENERATION_CACHE_TTL = (
+    int(os.environ.get("GENERATION_CACHE_TTL", "0")) or 7 * 24 * 60 * 60
+)  # 7 days
 
 API_VERSION = 1
 
@@ -129,7 +139,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": int(os.environ.get("PAGE_SIZE", "20")),
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"anon": f"{os.environ.get('THROTTLE_RATE_RPS')}/s"},
+    "DEFAULT_THROTTLE_RATES": {"anon": f"{os.environ.get('THROTTLE_RATE_RPS', '10')}/s"},
 }
 
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]

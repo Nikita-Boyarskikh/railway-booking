@@ -18,8 +18,7 @@ import abc
 import contextlib
 import datetime
 import functools
-from collections.abc import Callable
-from typing import Final, cast
+from typing import TYPE_CHECKING, Final, cast
 from uuid import UUID
 
 from django.conf import settings
@@ -27,6 +26,9 @@ from django.core.cache import BaseCache, cache as default_cache
 
 from apps.core.types import DepartureSummary, SeatsResponse, StationDict
 from apps.routes.models import Route
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class CacheBase[T, **P](abc.ABC):
@@ -50,7 +52,7 @@ class CacheBase[T, **P](abc.ABC):
     @classmethod
     def get(cls, *args: P.args, **kwargs: P.kwargs) -> T:
         """Return the cached value for this call's args"""
-        return cast(T, cls.cache.get(cls.key(*args, **kwargs)))
+        return cast("T", cls.cache.get(cls.key(*args, **kwargs)))
 
     @classmethod
     def set(cls, key: str, value: T) -> None:
@@ -70,7 +72,7 @@ class CacheBase[T, **P](abc.ABC):
             except ConnectionError:
                 hit = cls._MISSING
             if hit is not cls._MISSING:
-                return cast(T, hit)
+                return cast("T", hit)
             value = func(*args, **kwargs)
             cls.set(key, value)
             return value

@@ -1,8 +1,12 @@
+from typing import TYPE_CHECKING
+
 from apps.core.cache import StationsCache
-from apps.core.types import StationDict
 from apps.stations.exceptions import InvalidStationCodeError
 from apps.stations.models import Station
 from apps.stations.serializers import StationSerializer
+
+if TYPE_CHECKING:
+    from apps.core.types import StationDict
 
 
 @StationsCache.wrap

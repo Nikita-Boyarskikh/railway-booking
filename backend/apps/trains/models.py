@@ -1,10 +1,13 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from django_stubs_ext.db.models import TypedModelMeta
+
+if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
 
 
 class Train(models.Model):
@@ -17,8 +20,8 @@ class Train(models.Model):
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
     features = models.JSONField(default=dict, blank=True)
 
-    cars: QuerySet[Car]
-    departures: QuerySet[Departure]
+    cars: RelatedManager[Car]
+    departures: RelatedManager[Departure]
     route_id: int
 
     def __str__(self) -> str:
@@ -44,7 +47,7 @@ class Car(models.Model):
     features = models.JSONField(default=dict, blank=True)
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
 
-    seats: QuerySet[Seat]
+    seats: RelatedManager[Seat]
     train_id: int
 
     class Meta(TypedModelMeta):

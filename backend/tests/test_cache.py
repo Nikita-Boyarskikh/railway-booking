@@ -1,18 +1,21 @@
 """Tests for the Redis-backed cache layer (locmem in the test settings)."""
 
 from datetime import date
+from typing import TYPE_CHECKING
 
 import pytest
 from django.test.testcases import TestCase
 
-from apps.bookings.models import Passenger
 from apps.bookings.services import create_order
 from apps.core.cache import DepartureGenerationCache, SearchCache, SeatsCache, StationsCache
 from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
-from apps.trains.models import Car, Departure, Seat
 from apps.trains.services import list_seats, search_departures
 from tests.conftest import make_order_item
+
+if TYPE_CHECKING:
+    from apps.bookings.models import Passenger
+    from apps.trains.models import Car, Departure, Seat
 
 
 @pytest.mark.django_db

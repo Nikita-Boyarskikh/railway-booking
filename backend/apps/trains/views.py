@@ -1,4 +1,5 @@
-from rest_framework.request import Request
+from typing import TYPE_CHECKING
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -7,6 +8,9 @@ from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
 from apps.trains.serializers import DepartureSearchQuerySerializer, SeatsQuerySerializer
 from apps.trains.services import list_seats, search_departures
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request
 
 
 class DepartureSearchView(APIView):

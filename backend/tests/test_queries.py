@@ -8,11 +8,11 @@ per-row lookup — fails loudly instead of silently eating CPU in prod.
 """
 
 from datetime import date, time
+from typing import TYPE_CHECKING
 
 import pytest
 from django.conf import settings
 from django.core.cache import caches
-from pytest_django import DjangoAssertNumQueries
 from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking, Order, Passenger
@@ -20,10 +20,14 @@ from apps.bookings.services import create_order
 from apps.core.availability import free_seat_ids, make_segment_range
 from apps.core.timetable import compute_timetable
 from apps.routes.services import resolve_station_range
-from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import list_seats, search_departures
 from tests.conftest import make_order_item
+
+if TYPE_CHECKING:
+    from pytest_django import DjangoAssertNumQueries
+
+    from apps.stations.models import Station
 
 
 def _clear_all_caches() -> None:

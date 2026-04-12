@@ -1,10 +1,13 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 from djmoney.money import Money
 
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
-from apps.trains.models import Seat
+
+if TYPE_CHECKING:
+    from apps.trains.models import Seat
 
 
 @pytest.mark.django_db

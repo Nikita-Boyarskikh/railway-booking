@@ -1,6 +1,12 @@
+from typing import TYPE_CHECKING
+
 from django.contrib import admin
 
 from apps.bookings.models import Booking, Order, Passenger
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.http import HttpRequest
 
 
 @admin.register(Order)
@@ -41,5 +47,9 @@ class BookingAdmin(admin.ModelAdmin[Booking]):
     ordering = ("-order__created_at", "passenger__name")
     date_hierarchy = "departure__date"
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("order", "passenger", "departure", "station_from", "station_to")
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Booking]:
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("order", "passenger", "departure", "station_from", "station_to")
+        )

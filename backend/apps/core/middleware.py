@@ -1,11 +1,15 @@
 """Custom middleware for the railway-booking project."""
+
 import contextvars
 import logging
 import time
 import uuid
-from typing import Callable
+from typing import TYPE_CHECKING
 
-from django.http import HttpRequest, HttpResponse
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from django.http import HttpRequest, HttpResponse
 
 logger = logging.getLogger("apps.request")
 
@@ -26,6 +30,7 @@ class RequestIDMiddleware:
     A logging filter (:class:`RequestIDFilter`) injects the ID into every
     log record emitted while the request is being processed.
     """
+
     get_response: Callable[[HttpRequest], HttpResponse]
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
@@ -45,6 +50,7 @@ class RequestIDMiddleware:
 
 class RequestLoggingMiddleware:
     """Log every request with method, path, status, and duration."""
+
     get_response: Callable[[HttpRequest], HttpResponse]
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:

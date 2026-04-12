@@ -2,10 +2,11 @@ from typing import TYPE_CHECKING
 
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import QuerySet
 from djmoney.models.fields import MoneyField
 
 if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
+
     from apps.bookings.models import Booking
     from apps.routes.models import RouteSegment
 
@@ -16,10 +17,10 @@ class Station(models.Model):
     name = models.CharField(max_length=128)
     code = models.CharField(max_length=16, unique=True, db_index=True)
 
-    bookings_from: QuerySet[Booking]
-    bookings_to: QuerySet[Booking]
-    segments_out: QuerySet[Connection]
-    segments_in: QuerySet[Connection]
+    bookings_from: RelatedManager[Booking]
+    bookings_to: RelatedManager[Booking]
+    segments_out: RelatedManager[Connection]
+    segments_in: RelatedManager[Connection]
 
     def __str__(self) -> str:
         return f"{self.code} — {self.name}"
@@ -35,7 +36,7 @@ class Connection(models.Model):
 
     station_from_id: int
     station_to_id: int
-    routesegment_set: QuerySet[RouteSegment]
+    routesegment_set: RelatedManager[RouteSegment]
 
     def __str__(self) -> str:
         return f"{self.station_from.code}→{self.station_to.code}"

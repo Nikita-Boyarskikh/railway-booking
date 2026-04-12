@@ -1,8 +1,10 @@
 """Shared TypedDict definitions for service-layer return types."""
 
-import datetime
 from enum import StrEnum
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
+
+if TYPE_CHECKING:
+    import datetime
 
 
 class SeatStatus(StrEnum):

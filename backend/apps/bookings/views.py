@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
-from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,6 +11,9 @@ from apps.bookings.serializers import CreateOrderSerializer, OrderSerializer
 from apps.bookings.services import create_order
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request
 
 
 class OrderCreateView(APIView):

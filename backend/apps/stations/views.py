@@ -1,10 +1,14 @@
 """Station endpoints."""
 
-from rest_framework.request import Request
+from typing import TYPE_CHECKING
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.stations.services import list_stations
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request
 
 
 class StationListView(APIView):

@@ -10,12 +10,16 @@ The booking price for a segment range is::
 multiplied by any factor.
 """
 
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from djmoney.money import Money
 
-from apps.routes.models import Route
 from apps.routes.services import get_route_segments
-from apps.trains.models import Seat
+
+if TYPE_CHECKING:
+    from apps.routes.models import Route
+    from apps.trains.models import Seat
 
 
 def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) -> Money:

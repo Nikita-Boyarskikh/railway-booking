@@ -1,9 +1,12 @@
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from django.db import models
-from django.db.models import QuerySet
 
-from apps.trains.models import Train
+if TYPE_CHECKING:
+    from django_stubs_ext.db.models.manager import RelatedManager
+
+    from apps.trains.models import Train
 
 
 class Route(models.Model):
@@ -13,8 +16,8 @@ class Route(models.Model):
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
     features = models.JSONField(default=dict, blank=True)
 
-    trains: QuerySet[Train]
-    route_segments: QuerySet[RouteSegment]
+    trains: RelatedManager[Train]
+    route_segments: RelatedManager[RouteSegment]
 
     def __str__(self) -> str:
         return self.name

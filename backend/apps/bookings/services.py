@@ -1,6 +1,6 @@
 """Service layer for the bookings app: order creation and validation."""
 
-import uuid as uuid_mod
+from typing import TYPE_CHECKING
 
 from constance import config
 from django.conf import settings
@@ -14,10 +14,14 @@ from apps.core.availability import make_segment_range
 from apps.core.cache import DepartureGenerationCache
 from apps.core.db_utils import populate_prefetched_objects_cache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
-from apps.core.types import OrderItemInput
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure, Seat, Train
+
+if TYPE_CHECKING:
+    import uuid as uuid_mod
+
+    from apps.core.types import OrderItemInput
 
 
 def get_seat(train: Train, car_number: int, seat_number: int) -> Seat:

@@ -9,9 +9,9 @@ The dependency graph is::
 An autouse fixture clears caches between tests to prevent cross-test leaks.
 """
 
-from collections.abc import Generator
 from datetime import date, time, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 from constance.test import override_config
@@ -25,6 +25,9 @@ from apps.routes.models import Route, RouteSegment
 from apps.routes.services import resolve_station_range
 from apps.stations.models import Connection, Station
 from apps.trains.models import Car, Departure, Seat, Train
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # ---------------------------------------------------------------------------
 # Autouse: prevent process-level cache leaks between tests

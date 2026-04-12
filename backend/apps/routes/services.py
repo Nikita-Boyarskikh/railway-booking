@@ -1,9 +1,13 @@
-from django.db.models import QuerySet
+from typing import TYPE_CHECKING
 
 from apps.core.cache import StationOrderMaps, StationOrderMapsCache
 from apps.core.db_utils import use_prefetched_if_available
 from apps.routes.exceptions import InvalidStationRangeError
-from apps.routes.models import Route, RouteSegment
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from apps.routes.models import Route, RouteSegment
 
 
 def get_route_segments(route: Route) -> QuerySet[RouteSegment]:

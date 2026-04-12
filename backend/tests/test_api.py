@@ -1,14 +1,15 @@
 """HTTP API tests — one test per endpoint/scenario."""
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from django.conf import settings
 from rest_framework.test import APIClient
 
-from apps.stations.models import Station
-from apps.trains.models import Car, Departure, Seat
+if TYPE_CHECKING:
+    from apps.stations.models import Station
+    from apps.trains.models import Car, Departure, Seat
 
 
 @pytest.fixture

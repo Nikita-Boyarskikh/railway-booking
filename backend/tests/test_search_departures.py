@@ -2,16 +2,19 @@
 
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.bookings.models import Passenger
 from apps.bookings.services import create_order
 from apps.stations.exceptions import InvalidStationCodeError
-from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import search_departures
 from tests.conftest import make_order_item
+
+if TYPE_CHECKING:
+    from apps.bookings.models import Passenger
+    from apps.stations.models import Station
 
 
 @pytest.mark.django_db
