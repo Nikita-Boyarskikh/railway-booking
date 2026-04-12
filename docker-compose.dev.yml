@@ -4,6 +4,9 @@ services:
       - "8888:5432"
 
   backend:
+    build:
+      args:
+        NO_DEV_DEPS: ''
     entrypoint: ./entrypoint.sh
     environment:
       DJANGO_DEBUG: 1

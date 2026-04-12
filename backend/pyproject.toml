@@ -14,13 +14,17 @@ dependencies = [
     "redis[hiredis]>=7.4.0",
     "django-stubs-ext>=6.0.2",
     "django-money>=3.6.0",
+    "django-cors-headers>=4.9.0",
+    "django-health-check>=4.2.2",
 ]
 
 [dependency-groups]
 dev = [
+    "django-debug-toolbar>=6.3.0",
     "django-stubs[compatible-mypy]>=6.0.2",
     "djangorestframework-stubs[compatible-mypy]>=3.16.9",
     "mypy>=1.20.0",
+    "pre-commit>=4.5.1",
     "psycopg[binary,pool]>=3.2",
     "pytest>=8.3",
     "pytest-cov>=7.1.0",
@@ -56,6 +60,10 @@ select = [
     "N",    # pep8-naming
     "TID",  # tidy-imports
     "PT",   # pytest-style
+    "S",    # bandit
+    "A",    # builtins
+    "TCH",  # type-checking imports
+    "PERF", # performance
 ]
 ignore = [
     "E501",   # handled by formatter

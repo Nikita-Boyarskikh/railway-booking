@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
+from health_check.views import HealthCheckView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -12,3 +13,7 @@ urlpatterns = [
         path('orders/', include("apps.bookings.urls")),
     ])),
 ]
+
+if settings.DEBUG:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+    urlpatterns += debug_toolbar_urls()

@@ -14,7 +14,8 @@ RUN pip install uv
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
+ARG NO_DEV_DEPS
+RUN uv sync --frozen ${NO_DEV_DEPS:+--no-dev}
 
 # ---- runtime ----------------------------------------------------------------
 FROM python:3.14-slim AS runtime
@@ -33,6 +34,9 @@ USER app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app . .
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
 EXPOSE 8000
 CMD gunicorn config.wsgi:application \

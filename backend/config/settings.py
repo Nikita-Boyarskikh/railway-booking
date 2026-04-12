@@ -3,7 +3,9 @@ from pathlib import Path
 
 import django_stubs_ext
 from django.utils.translation import gettext_lazy as _
+from dotenv import load_dotenv
 
+load_dotenv()
 django_stubs_ext.monkeypatch()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+CORS_ALLOWED_ORIGINS = os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", "http://localhost").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -20,9 +23,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "corsheaders",
     "rest_framework",
     "constance",
     "djmoney",
+    "health_check",
     "apps.core",
     "apps.stations",
     "apps.routes",
@@ -31,6 +36,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.middleware.RequestIDMiddleware",
+    "apps.core.middleware.RequestLoggingMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -118,6 +126,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": int(os.environ.get("PAGE_SIZE", "20")),
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"anon": f"{os.environ.get('THROTTLE_RATE_RPS')}/s"},
 }
 
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]
@@ -136,4 +148,56 @@ CONSTANCE_CONFIG = {
         _("Fixed amount added to every booking, not multiplied by price factors"),
         "decimal_field",
     ),
+}
+
+# ---------------------------------------------------------------------------
+# Logging — structured output to stdout for Docker / gunicorn
+# ---------------------------------------------------------------------------
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {
+            "()": "apps.core.middleware.RequestIDFilter",
+        },
+    },
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s [%(request_id)s] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "filters": ["request_id"],
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
+    },
+    "loggers": {
+        "django": {
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django.db.backends": {
+            "level": "WARNING",
+            "propagate": False,
+            "handlers": ["console"],
+        },
+        "apps": {
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "apps.request": {
+            "level": LOG_LEVEL,
+            "propagate": False,
+            "handlers": ["console"],
+        },
+    },
 }
