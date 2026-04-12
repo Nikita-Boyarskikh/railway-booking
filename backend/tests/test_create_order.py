@@ -3,7 +3,7 @@
 import uuid as uuid_mod
 
 import pytest
-from moneyed import Money
+from djmoney.money import Money
 
 from apps.bookings.exceptions import DepartureNotFoundError, SeatNotFoundError, SeatUnavailableError
 from apps.bookings.models import Booking, Order, Passenger

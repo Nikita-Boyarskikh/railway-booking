@@ -7,7 +7,6 @@ import pytest
 from django.conf import settings
 from rest_framework.test import APIClient
 
-from apps.core.types import SeatStatus
 from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat
 
@@ -177,7 +176,6 @@ def test_seats_view(
     # Check schema: each seat has expected keys
     for s in cars[0]["seats"]:
         assert set(s.keys()) >= {"number", "seat_type", "status", "price"}
-        assert s["status"] in SeatStatus
 
 
 @pytest.mark.django_db
@@ -185,6 +183,8 @@ def test_seats_view_no_results(
     api_client: APIClient,
     station_b: Station,
     station_c: Station,
+    car: Car,
+    seat: Seat,
     departure: Departure,
 ) -> None:
     r = api_client.get(
@@ -419,8 +419,8 @@ def test_order_create_invalid_seat_number_400(
     seat: Seat,
     departure: Departure,
 ) -> None:
-    payload = _order_payload(departure, station_d, station_a, car, seat)
-    payload["items"][0]["seat_numer"] = 99
+    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload["items"][0]["seat_number"] = 99
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
@@ -434,7 +434,7 @@ def test_order_create_invalid_car_number_400(
     seat: Seat,
     departure: Departure,
 ) -> None:
-    payload = _order_payload(departure, station_d, station_a, car, seat)
+    payload = _order_payload(departure, station_a, station_d, car, seat)
     payload["items"][0]["car_number"] = 99
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()

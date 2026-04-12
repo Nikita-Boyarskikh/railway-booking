@@ -131,7 +131,7 @@ class StationOrderMapsCache(CacheBase[StationOrderMaps, [Route]]):
         return f"som:{route.pk}"
 
 
-class DepartureGenerationCache(CacheBase[int, [str]]):
+class DepartureGenerationCache(CacheBase[int, [str | UUID]]):
     """Cache for the generation counter of a departure, incremented on bookings to orphan seat caches."""
 
     ttl = settings.GENERATION_CACHE_TTL

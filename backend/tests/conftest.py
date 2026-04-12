@@ -204,7 +204,7 @@ def backward_departure(route: Route, station_b: Station, station_a: Station) -> 
 
 
 @pytest.fixture
-def passenger() -> Passenger:
+def passenger(db: None) -> Passenger:
     return Passenger.objects.create(
         name="John Johns",
         gender="male",

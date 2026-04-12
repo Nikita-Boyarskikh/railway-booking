@@ -49,8 +49,7 @@ class CreateOrderSerializer(serializers.Serializer[None]):
     """Input serializer for order creation, validating the request body."""
 
     departure_uuid = serializers.UUIDField()
-    station_code_max_length = Station._meta.get_field("code").max_length
-    assert station_code_max_length is not None
+    station_code_max_length: int = Station._meta.get_field("code").max_length or 16
     station_from_code = serializers.CharField(max_length=station_code_max_length)
     station_to_code = serializers.CharField(max_length=station_code_max_length)
     items = serializers.ListField(child=OrderItemSerializer(), min_length=1)

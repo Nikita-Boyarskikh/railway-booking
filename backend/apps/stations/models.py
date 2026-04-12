@@ -1,10 +1,13 @@
+from typing import TYPE_CHECKING
+
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
 from djmoney.models.fields import MoneyField
 
-from apps.bookings.models import Booking
-from apps.routes.models import RouteSegment
+if TYPE_CHECKING:
+    from apps.bookings.models import Booking
+    from apps.routes.models import RouteSegment
 
 
 class Station(models.Model):

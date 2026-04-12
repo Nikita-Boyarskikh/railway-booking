@@ -52,6 +52,7 @@ def test_search_departures_one(
             "train_name": departure.train.name,
             "train_number": departure.train.number,
             "departure_time": depart_at.isoformat(timespec="minutes"),
+            # 100km (A-B) + 200km (B-C) + 300km (C-D) = 600km / 100kmph = 6h
             "arrival_time": (depart_at + timedelta(hours=6)).isoformat(timespec="minutes"),
             # Both seats factor=1.0, full route base=100 + segments=900 = 1000,
             "min_price": "$1,000.00",
