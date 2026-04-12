@@ -1,7 +1,8 @@
 from django.db.models import QuerySet
 
-from apps.core.cache import StationOrderMapsCache, StationOrderMaps
+from apps.core.cache import StationOrderMaps, StationOrderMapsCache
 from apps.core.db_utils import use_prefetched_if_available
+from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.models import Route, RouteSegment
 
 
@@ -33,15 +34,16 @@ def get_station_order_maps(route: Route) -> StationOrderMaps:
 
 
 def resolve_station_range(
-        route: Route, station_from_id: int, station_to_id: int
-) -> tuple[int, int] | tuple[None, None]:
-    """Return ``(from_order, to_order)`` for a trip along ``route`` or ``None``.
-
+    route: Route, station_from_id: int, station_to_id: int
+) -> tuple[int, int]:
+    """
+    Return ``(from_order, to_order)`` for a trip along ``route``.
+    Raises :class:`InvalidStationRangeError` if the stations are invalid or in the wrong order.
     Uses the cached station-order maps built by :func:`get_station_order_maps`.
     """
     from_map, to_map = get_station_order_maps(route)
     f = from_map.get(station_from_id)
     t = to_map.get(station_to_id)
     if f is None or t is None or t <= f:
-        return None, None
+        raise InvalidStationRangeError()
     return f, t

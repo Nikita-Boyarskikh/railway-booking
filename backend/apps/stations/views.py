@@ -4,6 +4,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.stations.serializers import StationSerializer
 from apps.stations.services import list_stations
 
 
@@ -17,4 +18,5 @@ class StationListView(APIView):
 
     def get(self, request: Request) -> Response:
         """Return cached ``[{name, code}, ...]`` sorted by name."""
-        return Response(list_stations())
+        data = StationSerializer(list_stations(), many=True).data
+        return Response(data)

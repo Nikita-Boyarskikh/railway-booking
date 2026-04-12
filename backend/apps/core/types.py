@@ -1,6 +1,15 @@
 """Shared TypedDict definitions for service-layer return types."""
 
+import datetime
+from enum import StrEnum
 from typing import Any, TypedDict
+
+
+class SeatStatus(StrEnum):
+    """Availability status of a seat on a specific departure segment range."""
+
+    FREE = "free"
+    OCCUPIED = "occupied"
 
 
 class TimetableStop(TypedDict):
@@ -28,7 +37,7 @@ class SeatDict(TypedDict):
 
     number: int
     seat_type: str
-    status: str  # "free" | "occupied"
+    status: SeatStatus
     price: str
 
 
@@ -47,19 +56,18 @@ class SeatsResponse(TypedDict):
     cars: list[CarDict]
 
 
+class PassengerDict(TypedDict):
+    """Passenger data in the order details response."""
+
+    name: str
+    passport_number: str
+    gender: str
+    birth_date: datetime.date
+
+
 class OrderItemInput(TypedDict):
     """Expected shape of each element in the ``items`` list for ``create_order``."""
 
     car_number: int
     seat_number: int
-    passenger_name: str
-    passenger_passport: str
-    passenger_gender: str
-    passenger_birth_date: str
-
-
-class StationDict(TypedDict):
-    """Station payload returned from the stations list API."""
-
-    name: str
-    code: str
+    passenger: PassengerDict

@@ -230,10 +230,12 @@ The HTTP API never exposes internal integer primary keys. Public identifiers are
       {
         "car_number": 2,
         "seat_number": 17,
-        "passenger_name": "John Doe",
-        "passenger_passport": "1234567890",
-        "passenger_gender": "male",
-        "passenger_birth_date": "1990-01-15"
+        "passenger": {
+          "name": "John Doe",
+          "passport_number": "1234567890",
+          "gender": "male",
+          "birth_date": "1990-01-15"
+        }
       }
     ]
   }

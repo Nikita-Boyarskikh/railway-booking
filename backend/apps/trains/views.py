@@ -2,6 +2,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.routes.exceptions import InvalidStationRangeError
+from apps.stations.exceptions import InvalidStationCodeError
 from apps.trains.serializers import DepartureSearchQuerySerializer, SeatsQuerySerializer
 from apps.trains.services import list_seats, search_departures
 
@@ -14,7 +16,11 @@ class DepartureSearchView(APIView):
         query = DepartureSearchQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
-        return Response(search_departures(data["from_code"], data["to_code"], data["date"]))
+        try:
+            departures = search_departures(data["from_code"], data["to_code"], data["date"])
+            return Response(departures)
+        except InvalidStationCodeError as e:
+            return Response({"detail": str(e)}, status=400)
 
 
 class DepartureSeatsView(APIView):
@@ -25,4 +31,7 @@ class DepartureSeatsView(APIView):
         query = SeatsQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
-        return Response(list_seats(uuid, data["from_code"], data["to_code"]))
+        try:
+            return Response(list_seats(uuid, data["from_code"], data["to_code"]))
+        except (InvalidStationCodeError, InvalidStationRangeError) as e:
+            return Response({"detail": str(e)}, status=400)

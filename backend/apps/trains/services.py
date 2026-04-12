@@ -3,8 +3,10 @@
 Covers departure search and seat listing. Keeps all business logic out of
 views and serializers so it can be tested and reused.
 """
-from datetime import date as date_cls
+
+import datetime
 from functools import cache
+from uuid import UUID
 
 from constance import config
 from django.db.models import QuerySet
@@ -13,10 +15,10 @@ from rest_framework.generics import get_object_or_404
 
 from apps.core.availability import free_seat_ids
 from apps.core.cache import SearchCache, SeatsCache
-from apps.core.db_utils import use_prefetched_if_available
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
-from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse
+from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse, SeatStatus
+from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
@@ -32,11 +34,16 @@ def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Depart
 
 
 @SearchCache.wrap
-def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[DepartureSummary]:
-    """Return departure summaries serving ``from_code``→``to_code`` on a date."""
+def search_departures(
+    from_code: str, to_code: str, on_date: datetime.date
+) -> list[DepartureSummary]:
+    """
+    Return departure summaries serving ``from_code``→``to_code`` on a date.
+
+    Raises:
+        InvalidStationCodeError: On unknown references or route mismatch.
+    """
     from_station, to_station = resolve_station_codes(from_code, to_code)
-    if not from_station or not to_station:
-        return []
 
     # Multiple departures share a route, so cache the (route, from, to) subtotal
     # across the loop rather than recomputing it per departure.
@@ -47,15 +54,19 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[D
     results: list[DepartureSummary] = []
     for departure in _select_related_for_departure_qs(Departure.objects.filter(date=on_date)):
         route = departure.train.route
-        from_order, to_order = resolve_station_range(route, from_station.pk, to_station.pk)
-        if not from_order and not to_order:
+
+        try:
+            from_order, to_order = resolve_station_range(route, from_station.pk, to_station.pk)
+        except InvalidStationRangeError:
             continue
 
         timetable = compute_timetable(departure)
         dep_at_a = next(
             (s["departure_time"] for s in timetable if s["station_id"] == from_station.pk), None
         )
-        arr_at_b = next((s["arrival_time"] for s in timetable if s["station_id"] == to_station.pk), None)
+        arr_at_b = next(
+            (s["arrival_time"] for s in timetable if s["station_id"] == to_station.pk), None
+        )
 
         free_ids = free_seat_ids(departure, from_order, to_order)
         free_count = len(free_ids)
@@ -65,7 +76,7 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[D
         min_price: Money | None = None
         for car in departure.train.cars.all():
             for seat in car.seats.all():
-                if seat.id not in free_ids:
+                if seat.pk not in free_ids:
                     continue
                 p = calc_booking_price(base_price, subtotal, seat)
                 if min_price is None or p < min_price:
@@ -86,7 +97,7 @@ def search_departures(from_code: str, to_code: str, on_date: date_cls) -> list[D
 
 
 @SeatsCache.wrap
-def list_seats(departure_uuid: str, from_code: str, to_code: str) -> SeatsResponse:
+def list_seats(departure_uuid: UUID | str, from_code: str, to_code: str) -> SeatsResponse:
     """Return seats for ``departure`` grouped by car with per-seat price/status."""
     departure = get_object_or_404(
         _select_related_for_departure_qs(Departure.objects.all()),
@@ -94,21 +105,16 @@ def list_seats(departure_uuid: str, from_code: str, to_code: str) -> SeatsRespon
     )
 
     from_station, to_station = resolve_station_codes(from_code, to_code)
-    if not from_station or not to_station:
-        return {"cars": []}
 
     route = departure.train.route
     from_order, to_order = resolve_station_range(route, from_station.pk, to_station.pk)
-    if not from_order and not to_order:
-        return {"cars": []}
 
     free_ids = free_seat_ids(departure, from_order, to_order)
     base_price = Money(config.BASE_PRICE, DEFAULT_CURRENCY)
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
 
     cars_out: list[CarDict] = []
-    cars = use_prefetched_if_available(departure.train, "cars", lambda qs: qs.prefetch_related("seats"))
-    for car in cars:
+    for car in departure.train.cars.all():
         seats_out: list[SeatDict] = []
         for seat in car.seats.all():
             price = calc_booking_price(base_price, subtotal, seat)
@@ -116,7 +122,7 @@ def list_seats(departure_uuid: str, from_code: str, to_code: str) -> SeatsRespon
                 SeatDict(
                     number=seat.number,
                     seat_type=seat.seat_type,
-                    status="free" if seat.id in free_ids else "occupied",
+                    status=SeatStatus.FREE if seat.pk in free_ids else SeatStatus.OCCUPIED,
                     price=str(price),
                 )
             )

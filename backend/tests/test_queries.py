@@ -12,12 +12,11 @@ from datetime import date, time
 import pytest
 from django.core.cache import caches
 from django.test.client import Client
-from psycopg.types.range import Range
 from pytest_django import DjangoAssertNumQueries
 
 from apps.bookings.models import Booking, Order, Passenger
 from apps.bookings.services import create_order
-from apps.core.availability import free_seat_ids
+from apps.core.availability import free_seat_ids, make_segment_range
 from apps.core.timetable import compute_timetable
 from apps.routes.services import resolve_station_range
 from apps.stations.models import Station
@@ -35,20 +34,21 @@ def _clear_all_caches() -> None:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_query_count_constant_in_bookings(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
     seat: Seat,
     seat2: Seat,
     departure: Departure,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Query count for ``search_departures`` must not grow with booking count."""
-    s = stations
-
     # Baseline: with zero bookings, call once to warm any lazy imports.
     # stations by code + route + (route_segments, connections, cars, seats) prefetch
     # + free_seat_ids overlap probe + constance = 8 queries total.
     with django_assert_max_num_queries(8):
-        results_empty = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        results_empty = search_departures(station_a.code, station_d.code, departure.date)
     assert results_empty
     assert results_empty[0]["free_seat_count"] == 2
 
@@ -57,7 +57,7 @@ def test_search_departures_query_count_constant_in_bookings(
     # load while keeping every pair non-overlapping enough to succeed.
     order = Order.objects.create()
     seats = [seat, seat2]
-    ranges = [(s[0], s[1]), (s[1], s[2]), (s[2], s[3])]
+    ranges = [(station_a, station_b), (station_b, station_c), (station_c, station_d)]
 
     route = departure.train.route
     created = 0
@@ -73,12 +73,13 @@ def test_search_departures_query_count_constant_in_bookings(
         ).exists():
             continue
         from_order, to_order = resolve_station_range(route, station_from.pk, station_to.pk)
-        assert from_order is not None and to_order is not None
+        route_segment_exists = from_order is not None and to_order is not None
+        assert route_segment_exists, "test fixture requested an impossible route segment"
         passenger = Passenger.objects.create(
             name=f"P{i}",
             passport_number=f"P{i:05d}",
             gender="male",
-            birth_date=date(1990, 1, 1),
+            birth_date=date.fromisoformat("1990-01-01"),
         )
         Booking.objects.create(
             order=order,
@@ -87,7 +88,7 @@ def test_search_departures_query_count_constant_in_bookings(
             station_from=station_from,
             station_to=station_to,
             passenger=passenger,
-            segment_range=Range(from_order, to_order, bounds="[)"),
+            segment_range=make_segment_range(from_order, to_order),
         )
         created += 1
 
@@ -95,7 +96,7 @@ def test_search_departures_query_count_constant_in_bookings(
 
     # With many bookings, the query count must stay under the same ceiling.
     with django_assert_max_num_queries(8):
-        results_full = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        results_full = search_departures(station_a.code, station_d.code, departure.date)
     assert results_full
 
 
@@ -107,7 +108,8 @@ def test_search_departures_query_count_constant_in_bookings(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_warm_cache_zero_queries(
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
     seat: Seat,
     seat2: Seat,
     departure: Departure,
@@ -115,25 +117,24 @@ def test_search_departures_warm_cache_zero_queries(
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Cache hit on the search endpoint must not hit the DB at all."""
-    s = stations
-
     # Cold path — bounded.
     # stations by code + route + (route_segments, connections, cars, seats) prefetch
     # + free_seat_ids overlap probe + constance = 8 queries total.
     with django_assert_max_num_queries(8):
-        first = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        first = search_departures(station_a.code, station_d.code, departure.date)
     assert first
 
     # Warm path — served from SearchCache, zero queries.
     with django_assert_num_queries(0):
-        second = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        second = search_departures(station_a.code, station_d.code, departure.date)
     assert second == first
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_search_departures_query_count_constant_in_departures(
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
     train: Train,
     car: Car,
     seat: Seat,
@@ -149,14 +150,12 @@ def test_search_departures_query_count_constant_in_departures(
     ``free_seat_ids`` overlap query — that one scales linearly today and is
     flagged as a batching opportunity in the perf plan.
     """
-    s = stations
-
     # Baseline: one departure.
     # stations by code + route + (route_segments, connections, cars, seats) prefetch
     # + free_seat_ids overlap probe + constance = 8 queries total.
     _clear_all_caches()
     with django_assert_max_num_queries(8) as ctx_baseline:
-        baseline_results = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        baseline_results = search_departures(station_a.code, station_d.code, departure.date)
     assert len(baseline_results) == 1
     baseline = len(ctx_baseline.captured_queries)
 
@@ -164,12 +163,14 @@ def test_search_departures_query_count_constant_in_departures(
     hours = (12, 14, 16, 18)
     for hour in hours:
         Departure.objects.create(
-            train=train, date=date(2026, 5, 1), departure_time=time(hour, 0),
+            train=train,
+            date=departure.date,
+            departure_time=time(hour, 0),
         )
 
     _clear_all_caches()
     with django_assert_max_num_queries(baseline + len(hours)):
-        scaled_results = search_departures(s[0].code, s[3].code, date(2026, 5, 1))
+        scaled_results = search_departures(station_a.code, station_d.code, departure.date)
     assert len(scaled_results) == 5
 
 
@@ -181,7 +182,8 @@ def test_search_departures_query_count_constant_in_departures(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_warm_cache_zero_queries(
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
     seat: Seat,
     seat2: Seat,
     departure: Departure,
@@ -190,46 +192,48 @@ def test_list_seats_warm_cache_zero_queries(
 ) -> None:
     """``list_seats`` hits the DB only on cold calls; subsequent calls with
     the same generation counter serve from SeatsCache with zero queries."""
-    s = stations
-
     _clear_all_caches()
     with django_assert_max_num_queries(8):
-        list_seats(departure.uuid, s[0].code, s[3].code)
+        list_seats(departure.uuid, station_a.code, station_d.code)
 
     with django_assert_num_queries(0):
-        list_seats(departure.uuid, s[0].code, s[3].code)
+        list_seats(departure.uuid, station_a.code, station_d.code)
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_list_seats_query_count_constant_in_bookings(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_d: Station,
     car: Car,
     seat: Seat,
     seat2: Seat,
     departure: Departure,
+    passenger: Passenger,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """``list_seats`` query count is independent of booking density on the
     departure — overlap check is a single indexed GiST probe, not a
     per-booking Python loop."""
-    s = stations
-
     _clear_all_caches()
     # departure + from/to stations + (route_segments, connections, cars, seats) prefetch
     # + free_seat_ids overlap probe + constance = 8 queries total
     with django_assert_max_num_queries(8) as ctx_empty:
-        list_seats(departure.uuid, s[0].code, s[3].code)
+        list_seats(departure.uuid, station_a.code, station_d.code)
     empty = len(ctx_empty.captured_queries)
 
     # Fill one seat on the non-conflicting A->B segment.
     create_order(
-        departure.uuid, s[0].code, s[1].code, [make_order_item(car.number, seat.number)],
+        departure.uuid,
+        station_a.code,
+        station_b.code,
+        [make_order_item(car.number, seat.number, passenger)],
     )
 
     _clear_all_caches()
     with django_assert_max_num_queries(8) as ctx_with_booking:
-        list_seats(departure.uuid, s[0].code, s[3].code)
+        list_seats(departure.uuid, station_a.code, station_d.code)
     with_booking = len(ctx_with_booking.captured_queries)
 
     assert with_booking <= empty, (
@@ -318,38 +322,44 @@ def test_compute_timetable_without_prefetch_one_query(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_create_order_query_count_bounded(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_d: Station,
     car: Car,
     seat: Seat,
     seat2: Seat,
     departure: Departure,
+    passenger: Passenger,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """``create_order`` issues a bounded number of queries that grows
     linearly with the number of items (one seat lookup + one passenger
     insert + one booking insert per item), plus a small constant for the
     departure/stations/order lookups."""
-    s = stations
-
     # Single-item order — establish a baseline.
     # savepoint start/end + departure + from/to stations + (route_segments, connections) prefetch
     # + constance + seat lookup + (order, booking, passenger) insert = 11 queries total.
     _clear_all_caches()
     with django_assert_max_num_queries(11) as ctx_single:
         create_order(
-            departure.uuid, s[0].code, s[1].code,
-            [make_order_item(car.number, seat.number)],
+            departure.uuid,
+            station_a.code,
+            station_b.code,
+            [make_order_item(car.number, seat.number, passenger)],
         )
     single_item = len(ctx_single.captured_queries)
 
-    # Two-item order on the remaining free seats (B->D avoids the overlap since the first call already took seat A->B).
+    # Two-item order on the remaining free seats (B->D avoids the overlap
+    # since the first call already took seat A->B).
     _clear_all_caches()
     with django_assert_max_num_queries(single_item + 3):
         create_order(
-            departure.uuid, s[1].code, s[3].code,
+            departure.uuid,
+            station_b.code,
+            station_d.code,
             [
-                make_order_item(car.number, seat.number),
-                make_order_item(car.number, seat2.number),
+                make_order_item(car.number, seat.number, passenger),
+                make_order_item(car.number, seat2.number, passenger),
             ],
         )
 
@@ -361,7 +371,10 @@ def test_create_order_query_count_bounded(
 
 @pytest.mark.django_db
 def test_stations_endpoint_warm_cache_zero_queries(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
     django_assert_num_queries: DjangoAssertNumQueries,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
@@ -376,9 +389,9 @@ def test_stations_endpoint_warm_cache_zero_queries(
     _clear_all_caches()
     with django_assert_max_num_queries(3):
         r1 = client.get("/api/stations/")
-    assert r1.status_code == 200
+    assert r1.status_code == 200, r1.json()
 
     with django_assert_num_queries(0):
         r2 = client.get("/api/stations/")
-    assert r2.status_code == 200
+    assert r2.status_code == 200, r2.json()
     assert r2.json() == r1.json()

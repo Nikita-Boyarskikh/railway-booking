@@ -18,8 +18,11 @@ from constance.test import override_config
 from django.core.cache import caches
 from djmoney.money import Money
 
-from apps.core.types import OrderItemInput
+from apps.bookings.models import Booking, Order, Passenger
+from apps.core.availability import make_segment_range
+from apps.core.types import OrderItemInput, PassengerDict
 from apps.routes.models import Route, RouteSegment
+from apps.routes.services import resolve_station_range
 from apps.stations.models import Connection, Station
 from apps.trains.models import Car, Departure, Seat, Train
 
@@ -75,17 +78,6 @@ def station_d(db: None) -> Station:
     return Station.objects.create(name="D", code="D")
 
 
-@pytest.fixture
-def stations(
-    station_a: Station,
-    station_b: Station,
-    station_c: Station,
-    station_d: Station,
-) -> list[Station]:
-    """All four stations as a list: [A, B, C, D]."""
-    return [station_a, station_b, station_c, station_d]
-
-
 # ---------------------------------------------------------------------------
 # Connections (segments between adjacent stations)
 # ---------------------------------------------------------------------------
@@ -106,7 +98,7 @@ def connection_bc(station_b: Station, station_c: Station) -> Connection:
     return Connection.objects.create(
         station_from=station_b,
         station_to=station_c,
-        distance_km=100,
+        distance_km=200,
         base_price=Money(300, "USD"),
     )
 
@@ -116,7 +108,7 @@ def connection_cd(station_c: Station, station_d: Station) -> Connection:
     return Connection.objects.create(
         station_from=station_c,
         station_to=station_d,
-        distance_km=100,
+        distance_km=300,
         base_price=Money(400, "USD"),
     )
 
@@ -171,7 +163,48 @@ def seat2(car: Car) -> Seat:
 
 @pytest.fixture
 def departure(train: Train) -> Departure:
-    return Departure.objects.create(train=train, date=date(2026, 5, 1), departure_time=time(10, 0))
+    return Departure.objects.create(
+        train=train,
+        date=date.fromisoformat("2026-05-01"),
+        departure_time=time.fromisoformat("10:00"),
+    )
+
+
+@pytest.fixture
+def backward_departure(route: Route, station_b: Station, station_a: Station) -> Departure:
+    backward_route = Route.objects.create(name="B-A")
+    connection_ba = Connection.objects.create(
+        station_from=station_b,
+        station_to=station_a,
+        distance_km=100,
+        base_price=Money(400, "USD"),
+    )
+    RouteSegment.objects.create(
+        route=backward_route, segment=connection_ba, order=0, stop_duration=timedelta(0)
+    )
+    backward_train = Train.objects.create(
+        route=backward_route, number="200", name="Backward", avg_speed_kmh=100
+    )
+    return Departure.objects.create(
+        train=backward_train,
+        date=date.fromisoformat("2026-05-01"),
+        departure_time=time.fromisoformat("12:00"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Passengers
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def passenger() -> Passenger:
+    return Passenger.objects.create(
+        name="John Johns",
+        gender="male",
+        passport_number="1234567890",
+        birth_date=date(1990, 1, 1),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -179,13 +212,40 @@ def departure(train: Train) -> Departure:
 # ---------------------------------------------------------------------------
 
 
-def make_order_item(car_number: int, seat_number: int) -> OrderItemInput:
+def make_order_item(car_number: int, seat_number: int, passenger: Passenger) -> OrderItemInput:
     """Build an ``OrderItemInput`` with default passenger data."""
     return OrderItemInput(
         car_number=car_number,
         seat_number=seat_number,
-        passenger_name="John",
-        passenger_passport="123",
-        passenger_gender="male",
-        passenger_birth_date="1990-01-01",
+        passenger=PassengerDict(
+            name=passenger.name,
+            passport_number=passenger.passport_number,
+            gender=passenger.gender,
+            birth_date=passenger.birth_date,
+        ),
+    )
+
+
+def create_booking(
+    departure: Departure,
+    seat: Seat,
+    station_from: Station,
+    station_to: Station,
+    passenger: Passenger,
+) -> None:
+    """Create a minimal Booking for testing (bypasses service layer)."""
+    order = Order.objects.create()
+    from_order, to_order = resolve_station_range(
+        departure.train.route, station_from.pk, station_to.pk
+    )
+    route_segment_exists = from_order is not None and to_order is not None
+    assert route_segment_exists, "test fixture requested an impossible route segment"
+    Booking.objects.create(
+        order=order,
+        departure=departure,
+        seat=seat,
+        station_from=station_from,
+        station_to=station_to,
+        passenger=passenger,
+        segment_range=make_segment_range(from_order, to_order),
     )

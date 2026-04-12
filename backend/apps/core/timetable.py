@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta
 
-from apps.core.db_utils import use_prefetched_if_available
 from apps.core.types import TimetableStop
 from apps.routes.services import get_route_segments
 from apps.trains.models import Departure
+
+
+def _format_time(time: datetime) -> str:
+    return time.isoformat(timespec="minutes")
 
 
 def compute_timetable(departure: Departure) -> list[TimetableStop]:
@@ -30,7 +33,7 @@ def compute_timetable(departure: Departure) -> list[TimetableStop]:
                 {
                     "station_id": segment.station_from_id,
                     "arrival_time": None,
-                    "departure_time": cursor.isoformat(timespec="minutes"),
+                    "departure_time": _format_time(cursor),
                 }
             )
 
@@ -42,8 +45,8 @@ def compute_timetable(departure: Departure) -> list[TimetableStop]:
         stops.append(
             {
                 "station_id": segment.station_to_id,
-                "arrival_time": arrival.isoformat(timespec="minutes"),
-                "departure_time": cursor.isoformat(timespec="minutes"),
+                "arrival_time": _format_time(arrival),
+                "departure_time": _format_time(cursor),
             }
         )
     return stops

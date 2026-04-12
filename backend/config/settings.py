@@ -70,9 +70,9 @@ DATABASES = {
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "pool": {
-                "max_lifetime": 600,
-                "min_size": 2,
-                "max_size": 10,
+                "max_lifetime": int(os.environ.get("DB_POOL_MAX_LIFETIME", "600")),
+                "min_size": int(os.environ.get("DB_POOL_MIN_SIZE", "2")),
+                "max_size": int(os.environ.get("DB_POOL_MAX_SIZE", "10")),
             },
         },
     }
@@ -91,6 +91,14 @@ CACHES = {
         "TIMEOUT": 60,
     },
 }
+
+# ---------------------------------------------------------------------------
+# Application-level cache TTLs (seconds)
+# ---------------------------------------------------------------------------
+CACHE_TTL_STATIONS = 24 * 60 * 60  # 1 day — invalidated by signals
+CACHE_TTL_SEARCH = 30  # departure search — coarse staleness acceptable
+CACHE_TTL_SEATS = 30  # seat listing — generation-keyed, stale entries orphan
+CACHE_TTL_STATION_ORDER_MAPS = 60  # route station-order maps — signal-invalidated
 
 CURRENCIES = ("USD",)
 DEFAULT_CURRENCY = "USD"
@@ -112,7 +120,7 @@ REST_FRAMEWORK = {
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
-CONSTANCE_DATABASE_CACHE_BACKEND = "default"
+CONSTANCE_DATABASE_CACHE_BACKEND: str | None = "default"
 CONSTANCE_ADDITIONAL_FIELDS = {
     "decimal_field": [
         "django.forms.fields.DecimalField",

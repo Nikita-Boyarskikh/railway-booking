@@ -3,7 +3,8 @@ from typing import Any
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from apps.bookings.models import Booking, Gender, Order, Passenger
+from apps.bookings.models import Booking, Order, Passenger
+from apps.stations.models import Station
 
 
 class PassengerSerializer(serializers.ModelSerializer[Passenger]):
@@ -41,23 +42,22 @@ class OrderItemSerializer(serializers.Serializer[None]):
 
     car_number = serializers.IntegerField(min_value=1)
     seat_number = serializers.IntegerField(min_value=1)
-    passenger_name = serializers.CharField(max_length=255)
-    passenger_passport = serializers.CharField(max_length=64)
-    passenger_gender = serializers.ChoiceField(choices=Gender.choices)
-    passenger_birth_date = serializers.DateField()
+    passenger = PassengerSerializer()
 
 
 class CreateOrderSerializer(serializers.Serializer[None]):
     """Input serializer for order creation, validating the request body."""
 
     departure_uuid = serializers.UUIDField()
-    station_from_code = serializers.CharField(max_length=16)
-    station_to_code = serializers.CharField(max_length=16)
+    station_code_max_length = Station._meta.get_field("code").max_length
+    assert station_code_max_length is not None
+    station_from_code = serializers.CharField(max_length=station_code_max_length)
+    station_to_code = serializers.CharField(max_length=station_code_max_length)
     items = serializers.ListField(child=OrderItemSerializer(), min_length=1)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["station_from_code"] == attrs["station_to_code"]:
-            raise ValidationError({"station_to_code": "Station_from and station_to must differ."})
+            raise ValidationError({"station_to_code": "station_from and station_to must differ."})
         return attrs
 
 

@@ -4,6 +4,7 @@ from django.db.models import QuerySet
 from djmoney.models.fields import MoneyField
 
 from apps.bookings.models import Booking
+from apps.routes.models import RouteSegment
 
 
 class Station(models.Model):
@@ -31,6 +32,7 @@ class Connection(models.Model):
 
     station_from_id: int
     station_to_id: int
+    routesegment_set: QuerySet[RouteSegment]
 
     def __str__(self) -> str:
         return f"{self.station_from.code}→{self.station_to.code}"

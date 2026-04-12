@@ -14,7 +14,7 @@ class Route(models.Model):
     features = models.JSONField(default=dict, blank=True)
 
     trains: QuerySet[Train]
-    route_segments: QuerySet[RouteSegment]
+    routesegment_set: QuerySet[RouteSegment]
 
     def __str__(self) -> str:
         return self.name

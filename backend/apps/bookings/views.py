@@ -4,9 +4,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.bookings.exceptions import DepartureNotFoundError, SeatNotFoundError, SeatUnavailableError
 from apps.bookings.models import Order
 from apps.bookings.serializers import CreateOrderSerializer, OrderSerializer
-from apps.bookings.services import InvalidRequestError, SeatUnavailableError, create_order
+from apps.bookings.services import create_order
+from apps.routes.exceptions import InvalidStationRangeError
+from apps.stations.exceptions import InvalidStationCodeError
 
 
 class OrderCreateView(APIView):
@@ -34,7 +37,12 @@ class OrderCreateView(APIView):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
-        except InvalidRequestError as e:
+        except (
+            DepartureNotFoundError,
+            InvalidStationCodeError,
+            InvalidStationRangeError,
+            SeatNotFoundError,
+        ) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 

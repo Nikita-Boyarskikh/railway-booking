@@ -1,18 +1,17 @@
 """Tests for seat availability: resolve_station_range, free_seat_ids, and create_order integration."""
 
-from datetime import date
-
 import pytest
-from psycopg.types.range import Range
 
-from apps.bookings.models import Booking, Order, Passenger
-from apps.bookings.services import SeatUnavailableError, create_order
+from apps.bookings.exceptions import SeatUnavailableError
+from apps.bookings.models import Passenger
+from apps.bookings.services import create_order
 from apps.core.availability import free_seat_ids
+from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.models import Route
 from apps.routes.services import resolve_station_range
 from apps.stations.models import Station
 from apps.trains.models import Car, Departure, Seat
-from tests.conftest import make_order_item
+from tests.conftest import create_booking, make_order_item
 
 # ---------------------------------------------------------------------------
 # resolve_station_range — unit tests
@@ -22,81 +21,57 @@ from tests.conftest import make_order_item
 @pytest.mark.django_db
 def test_resolve_station_range_valid(
     route: Route,
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
 ) -> None:
     """A->D on the full route returns (0, 3)."""
-    result = resolve_station_range(route, stations[0].pk, stations[3].pk)
+    result = resolve_station_range(route, station_a.pk, station_d.pk)
     assert result == (0, 3)
 
 
 @pytest.mark.django_db
 def test_resolve_station_range_partial(
     route: Route,
-    stations: list[Station],
+    station_b: Station,
+    station_d: Station,
 ) -> None:
     """B->D returns (1, 3) — partial route."""
-    result = resolve_station_range(route, stations[1].id, stations[3].id)
+    result = resolve_station_range(route, station_b.pk, station_d.pk)
     assert result == (1, 3)
 
 
 @pytest.mark.django_db
 def test_resolve_station_range_reversed(
     route: Route,
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
 ) -> None:
-    """D->A (reverse direction) returns None."""
-    result = resolve_station_range(route, stations[3].id, stations[0].id)
-    assert result == (None, None)
+    """D->A (reverse direction) raises InvalidStationRangeError"""
+    with pytest.raises(InvalidStationRangeError):
+        resolve_station_range(route, station_d.pk, station_a.pk)
 
 
 @pytest.mark.django_db
 def test_resolve_station_range_same_station(
     route: Route,
-    stations: list[Station],
+    station_a: Station,
 ) -> None:
-    """A->A returns None."""
-    result = resolve_station_range(route, stations[0].id, stations[0].id)
-    assert result == (None, None)
+    """A->A raises InvalidStationRangeError"""
+    with pytest.raises(InvalidStationRangeError):
+        resolve_station_range(route, station_a.pk, station_a.pk)
 
 
 @pytest.mark.django_db
 def test_resolve_station_range_not_on_route(route: Route, db: None) -> None:
-    """Station not on the route returns None."""
+    """Station not on the route raises InvalidStationRangeError"""
     orphan = Station.objects.create(name="Orphan", code="ORP")
-    result = resolve_station_range(route, orphan.id, orphan.id)
-    assert result == (None, None)
+    with pytest.raises(InvalidStationRangeError):
+        resolve_station_range(route, orphan.pk, orphan.pk)
 
 
 # ---------------------------------------------------------------------------
 # free_seat_ids — unit tests
 # ---------------------------------------------------------------------------
-
-
-def _book(
-    departure: Departure,
-    seat: Seat,
-    station_from: Station,
-    station_to: Station,
-) -> None:
-    """Create a minimal Booking for testing (bypasses service layer)."""
-    order = Order.objects.create()
-    passenger = Passenger.objects.create(
-        name="Test",
-        passport_number="T",
-        gender="male",
-        birth_date=date(1990, 1, 1),
-    )
-    from_order, to_order = resolve_station_range(departure.train.route, station_from.id, station_to.id)
-    assert from_order is not None and to_order is not None, "test fixture requested an impossible route segment"
-    Booking.objects.create(
-        order=order,
-        departure=departure,
-        seat=seat,
-        station_from=station_from,
-        station_to=station_to,
-        passenger=passenger,
-        segment_range=Range(from_order, to_order, bounds="[)"),
-    )
 
 
 @pytest.mark.django_db
@@ -107,62 +82,70 @@ def test_free_seat_ids_all_free(
 ) -> None:
     """No bookings — all seats are free."""
     free = free_seat_ids(departure, 0, 3)
-    assert free == {seat.id, seat2.id}
+    assert free == {seat.pk, seat2.pk}
 
 
 @pytest.mark.django_db
 def test_free_seat_ids_adjacent_non_overlapping(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
     departure: Departure,
     seat: Seat,
     seat2: Seat,
+    passenger: Passenger,
 ) -> None:
     """Seat booked A->B is free for B->C (adjacent, non-overlapping)."""
-    _book(departure, seat, stations[0], stations[1])
+    create_booking(departure, seat, station_a, station_b, passenger)
     # Query for B->C (orders 1..2)
     free = free_seat_ids(departure, 1, 2)
-    assert seat.id in free
-    assert seat2.id in free
+    assert seat.pk in free
+    assert seat2.pk in free
 
 
 @pytest.mark.django_db
 def test_free_seat_ids_exact_overlap(
-    stations: list[Station],
+    station_a: Station,
+    station_c: Station,
     departure: Departure,
     seat: Seat,
     seat2: Seat,
+    passenger: Passenger,
 ) -> None:
     """Seat booked A->C is occupied for A->C (exact overlap)."""
-    _book(departure, seat, stations[0], stations[2])
+    create_booking(departure, seat, station_a, station_c, passenger)
     free = free_seat_ids(departure, 0, 2)
-    assert seat.id not in free
-    assert seat2.id in free
+    assert seat.pk not in free
+    assert seat2.pk in free
 
 
 @pytest.mark.django_db
 def test_free_seat_ids_partial_overlap(
-    stations: list[Station],
+    station_a: Station,
+    station_c: Station,
     departure: Departure,
     seat: Seat,
     seat2: Seat,
+    passenger: Passenger,
 ) -> None:
     """Seat booked A->C is occupied for B->D (partial overlap at B->C)."""
-    _book(departure, seat, stations[0], stations[2])
+    create_booking(departure, seat, station_a, station_c, passenger)
     free = free_seat_ids(departure, 1, 3)
-    assert seat.id not in free
-    assert seat2.id in free
+    assert seat.pk not in free
+    assert seat2.pk in free
 
 
 @pytest.mark.django_db
 def test_free_seat_ids_multiple_bookings_different_seats(
-    stations: list[Station],
+    station_a: Station,
+    station_d: Station,
     departure: Departure,
     seat: Seat,
     seat2: Seat,
+    passenger: Passenger,
 ) -> None:
     """Both seats booked on overlapping segments — none free."""
-    _book(departure, seat, stations[0], stations[3])
-    _book(departure, seat2, stations[0], stations[3])
+    create_booking(departure, seat, station_a, station_d, passenger)
+    create_booking(departure, seat2, station_a, station_d, passenger)
     free = free_seat_ids(departure, 0, 3)
     assert free == set()
 
@@ -175,26 +158,33 @@ def test_free_seat_ids_multiple_bookings_different_seats(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_non_overlapping_segments_share_seat(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    item = make_order_item(car.number, seat.number)
-    create_order(departure.uuid, stations[0].code, stations[1].code, [item])
-    order2 = create_order(departure.uuid, stations[2].code, stations[3].code, [item])
-    assert order2.bookings.count() == 1
+    item = make_order_item(car.number, seat.number, passenger)
+    create_order(departure.uuid, station_a.code, station_b.code, [item])
+    create_order(departure.uuid, station_c.code, station_d.code, [item])
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_overlapping_segments_conflict(
-    stations: list[Station],
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    item = make_order_item(car.number, seat.number)
-    create_order(departure.uuid, stations[0].code, stations[2].code, [item])
+    item = make_order_item(car.number, seat.number, passenger)
+    create_order(departure.uuid, station_a.code, station_c.code, [item])
     with pytest.raises(SeatUnavailableError):
-        create_order(departure.uuid, stations[1].code, stations[3].code, [item])
+        create_order(departure.uuid, station_b.code, station_d.code, [item])

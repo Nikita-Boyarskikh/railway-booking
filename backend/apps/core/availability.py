@@ -12,11 +12,19 @@ exclusion constraint on ``Booking`` — :func:`free_seat_ids` derives the
 occupied set with a single ``segment_range &&`` query rather than walking
 route segments in Python.
 """
+
 from psycopg.types.range import Range
 
 from apps.bookings.models import Booking
 from apps.core.db_utils import is_prefetched
 from apps.trains.models import Departure, Seat
+
+SEGMENT_RANGE_BOUNDS = "[)"
+
+
+def make_segment_range(from_order: int, to_order: int) -> Range[int]:
+    """Build a half-open ``[from_order, to_order)`` range for segment overlap checks."""
+    return Range(from_order, to_order, bounds=SEGMENT_RANGE_BOUNDS)
 
 
 def free_seat_ids(departure: Departure, from_order: int, to_order: int) -> set[int]:
@@ -27,7 +35,7 @@ def free_seat_ids(departure: Departure, from_order: int, to_order: int) -> set[i
         all_seat_ids = set(
             Seat.objects.filter(car__train=departure.train).values_list("id", flat=True)
         )
-    trip_range: Range[int] = Range(from_order, to_order, bounds="[)")
+    trip_range = make_segment_range(from_order, to_order)
     occupied = set(
         Booking.objects.filter(departure=departure, segment_range__overlap=trip_range).values_list(
             "seat_id", flat=True
