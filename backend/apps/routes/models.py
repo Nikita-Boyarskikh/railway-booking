@@ -32,11 +32,8 @@ class RouteSegment(models.Model):
     connection_id: int
 
     class Meta:
-        unique_together = [("route", "segment", "order")]
         ordering = ["order"]
         constraints = [
-            # Two segments can never share the same ``order`` within one route.
-            # Also powers lookups like ``WHERE route_id = ? ORDER BY order``.
             models.UniqueConstraint(
                 fields=["route", "order"], name="routesegment_route_order_uniq"
             ),

@@ -13,7 +13,7 @@ class Train(models.Model):
     route = models.ForeignKey("routes.Route", related_name="trains", on_delete=models.PROTECT)
     number = models.CharField(max_length=16, unique=True, db_index=True)
     name = models.CharField(max_length=128, blank=True, default="")
-    avg_speed_kmh = models.FloatField(validators=[MinValueValidator(0.0)])
+    avg_speed_kmh = models.FloatField(validators=[MinValueValidator(0.1)])
     price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
     features = models.JSONField(default=dict, blank=True)
 
@@ -48,8 +48,10 @@ class Car(models.Model):
     train_id: int
 
     class Meta(TypedModelMeta):
-        unique_together = [("train", "number")]
         ordering = ["number"]
+        constraints = [
+            models.UniqueConstraint(fields=["train", "number"], name="car_train_number_uniq"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.train.number}/car{self.number}"
@@ -75,8 +77,10 @@ class Seat(models.Model):
     car_id: int
 
     class Meta(TypedModelMeta):
-        unique_together = [("car", "number")]
         ordering = ["number"]
+        constraints = [
+            models.UniqueConstraint(fields=["car", "number"], name="seat_car_number_uniq"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.car}/seat{self.number}"

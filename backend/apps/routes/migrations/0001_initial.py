@@ -35,7 +35,6 @@ class Migration(migrations.Migration):
             options={
                 'ordering': ['order'],
                 'constraints': [models.UniqueConstraint(fields=('route', 'order'), name='routesegment_route_order_uniq')],
-                'unique_together': {('route', 'segment', 'order')},
             },
         ),
     ]

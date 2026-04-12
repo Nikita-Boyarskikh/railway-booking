@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.CharField(db_index=True, max_length=16, unique=True)),
                 ('name', models.CharField(blank=True, default='', max_length=128)),
-                ('avg_speed_kmh', models.FloatField(validators=[django.core.validators.MinValueValidator(0.0)])),
+                ('avg_speed_kmh', models.FloatField(validators=[django.core.validators.MinValueValidator(0.1)])),
                 ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6)),
                 ('features', models.JSONField(blank=True, default=dict)),
                 ('route', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='trains', to='routes.route')),
@@ -39,7 +39,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'ordering': ['number'],
-                'unique_together': {('train', 'number')},
             },
         ),
         migrations.CreateModel(
@@ -53,7 +52,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'ordering': ['number'],
-                'unique_together': {('car', 'number')},
+                'constraints': [models.UniqueConstraint(fields=('car', 'number'), name='seat_cat_number_uniq')],
             },
         ),
         migrations.CreateModel(
@@ -69,5 +68,9 @@ class Migration(migrations.Migration):
                 'ordering': ['date', 'departure_time'],
                 'indexes': [models.Index(fields=['date', 'train'], name='trains_depa_date_cc6fd2_idx')],
             },
+        ),
+        migrations.AddConstraint(
+            model_name='car',
+            constraint=models.UniqueConstraint(fields=('train', 'number'), name='car_train_number_uniq'),
         ),
     ]

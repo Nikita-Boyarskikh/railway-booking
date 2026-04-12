@@ -27,7 +27,7 @@ class Connection(models.Model):
 
     station_from = models.ForeignKey(Station, related_name="segments_out", on_delete=models.CASCADE)
     station_to = models.ForeignKey(Station, related_name="segments_in", on_delete=models.CASCADE)
-    distance_km = models.FloatField(validators=[MinValueValidator(0.0)])
+    distance_km = models.FloatField(validators=[MinValueValidator(0.001)])
     base_price = MoneyField(max_digits=10, decimal_places=2)
 
     station_from_id: int
