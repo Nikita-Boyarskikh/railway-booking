@@ -1,20 +1,24 @@
 from apps.core.cache import StationsCache
+from apps.core.types import StationDict
 from apps.stations.exceptions import InvalidStationCodeError
 from apps.stations.models import Station
+from apps.stations.serializers import StationSerializer
 
 
 @StationsCache.wrap
-def list_stations() -> list[Station]:
+def list_stations() -> list[StationDict]:
     """Return the list of all stations as ``[{name, code}, ...]`` sorted by name."""
-    return list(Station.objects.order_by("name"))
+    return StationSerializer(Station.objects.order_by("name"), many=True).data  # type: ignore[return-value]
 
 
 def resolve_station_codes(from_code: str, to_code: str) -> tuple[Station, Station]:
-    """
-    Return ``(from_id, to_id)`` for two station codes.
-    If either code is invalid, raise :class:`
-    Note that this function does not check that the stations are on the same route.
-    That is the responsibility of the caller (e.g. in :func:`list_departures`).
+    """Return ``(from_station, to_station)`` for two station codes.
+
+    Does not verify that both stations belong to the same route —
+    that is the caller's responsibility.
+
+    Raises:
+        InvalidStationCodeError: If either code does not match a known station.
     """
     stations = {s.code: s for s in Station.objects.filter(code__in=[from_code, to_code])}
     from_station = stations.get(from_code)

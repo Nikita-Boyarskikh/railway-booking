@@ -5,8 +5,8 @@ from apps.routes.services import get_route_segments
 from apps.trains.models import Departure
 
 
-def _format_time(time: datetime) -> str:
-    return time.isoformat(timespec="minutes")
+def _format_time(dt: datetime) -> str:
+    return dt.isoformat(timespec="minutes")
 
 
 def compute_timetable(departure: Departure) -> list[TimetableStop]:

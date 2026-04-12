@@ -23,18 +23,18 @@ def test_stations_cache_invalidated_on_station_change(station_a: Station) -> Non
     ``captureOnCommitCallbacks(execute=True)`` to drive the callbacks inside
     the test transaction (which never actually commits).
     """
-    StationsCache.set(StationsCache.key(), [station_a])
+    StationsCache.set(StationsCache.key(), [{"name": station_a.name, "code": station_a.code}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         Station.objects.create(name="New", code="NEW")
     assert StationsCache.get() is None
 
-    StationsCache.set(StationsCache.key(), [station_a])
+    StationsCache.set(StationsCache.key(), [{"name": station_a.name, "code": station_a.code}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         station_a.name = "Modified"
         station_a.save()
     assert StationsCache.get() is None
 
-    StationsCache.set(StationsCache.key(), [station_a])
+    StationsCache.set(StationsCache.key(), [{"name": station_a.name, "code": station_a.code}])
     with TestCase.captureOnCommitCallbacks(execute=True):
         Station.objects.filter(code="NEW").delete()
     assert StationsCache.get() is None

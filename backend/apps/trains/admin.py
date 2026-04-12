@@ -64,6 +64,9 @@ class TrainAdmin(admin.ModelAdmin[Train]):
     search_fields = ("number", "name", "route__name")
     ordering = ("number",)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("route")
+
     def save_formset(self, request: HttpRequest, form: Any, formset: Any, change: Any) -> None:
         """After saving the car inline formset, bulk-create seats if requested."""
         formset.save()
@@ -100,6 +103,9 @@ class CarAdmin(admin.ModelAdmin[Car]):
     ordering = ("train", "number")
     list_filter = ("car_type",)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("train")
+
     def save_model(self, request: HttpRequest, obj: Car, form: Any, change: Any) -> None:
         """Save the car and optionally bulk-create seats numbered ``1..N``."""
         super().save_model(request, obj, form, change)
@@ -116,6 +122,9 @@ class SeatAdmin(admin.ModelAdmin[Seat]):
     ordering = ("car__train__number", "car__number", "number")
     list_filter = ("seat_type",)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("car__train")
+
 
 @admin.register(Departure)
 class DepartureAdmin(admin.ModelAdmin[Departure]):
@@ -126,3 +135,6 @@ class DepartureAdmin(admin.ModelAdmin[Departure]):
     search_fields = ("train__number", "train__name")
     ordering = ("date", "departure_time", "train")
     list_filter = ("date",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("train")

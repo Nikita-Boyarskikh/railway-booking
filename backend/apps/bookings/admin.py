@@ -40,3 +40,6 @@ class BookingAdmin(admin.ModelAdmin[Booking]):
     )
     ordering = ("-order__created_at", "passenger__name")
     date_hierarchy = "departure__date"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("order", "passenger", "departure", "station_from", "station_to")

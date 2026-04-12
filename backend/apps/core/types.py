@@ -71,3 +71,10 @@ class OrderItemInput(TypedDict):
     car_number: int
     seat_number: int
     passenger: PassengerDict
+
+
+class StationDict(TypedDict):
+    """Station data in the ``list_stations`` response."""
+
+    name: str
+    code: str

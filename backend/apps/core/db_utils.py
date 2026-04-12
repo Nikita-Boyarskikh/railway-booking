@@ -20,3 +20,13 @@ def use_prefetched_if_available[T: Model](
         result: QuerySet[Any] = qs.all()
         return result
     return build_fallback_queryset(qs)
+
+
+def populate_prefetched_objects_cache[T: Model, R: Model](
+    model: T, related_name: str, objects: Iterable[R]
+) -> None:
+    """Populate the prefetched objects cache."""
+    if not hasattr(model, "_prefetched_objects_cache"):
+        model._prefetched_objects_cache = {}
+    model._prefetched_objects_cache[related_name] = objects
+    model._prefetch_done = True

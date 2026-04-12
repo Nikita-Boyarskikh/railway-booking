@@ -12,6 +12,7 @@ from apps.bookings.exceptions import DepartureNotFoundError, SeatNotFoundError, 
 from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 from apps.core.availability import make_segment_range
 from apps.core.cache import DepartureGenerationCache
+from apps.core.db_utils import populate_prefetched_objects_cache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.types import OrderItemInput
 from apps.routes.services import resolve_station_range
@@ -96,6 +97,7 @@ def create_order(
     # single statement rather than INSERT followed by UPDATE.
     order = Order.objects.create(total_price=total)
 
+    bookings: list[Booking] = []
     for item, seat in resolved:
         passenger_data = item["passenger"]
         passenger = Passenger.objects.create(
@@ -106,7 +108,7 @@ def create_order(
         )
 
         try:
-            Booking.objects.create(
+            booking = Booking.objects.create(
                 order=order,
                 departure=departure,
                 seat=seat,
@@ -119,6 +121,12 @@ def create_order(
             if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e):  # pragma: no cover
                 raise  # should never happen if the DB schema is correct
             raise SeatUnavailableError(seat.car.number, seat.number) from e
+        bookings.append(booking)
+
+    # Populate prefetch cache so the caller can serialize without extra queries.
+    # All FK objects (departure, seat.car, station_from, station_to, passenger)
+    # are already loaded in memory from the creation above.
+    populate_prefetched_objects_cache(order, "bookings", bookings)
 
     transaction.on_commit(lambda: DepartureGenerationCache.incr(departure.uuid))
 

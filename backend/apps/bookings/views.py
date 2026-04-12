@@ -44,13 +44,22 @@ class OrderCreateView(APIView):
             SeatNotFoundError,
         ) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # create_order populates order._prefetched_objects_cache with bookings
+        # and all their FK relations — no extra query needed.
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
 class OrderDetailView(RetrieveAPIView[Order]):
     """``GET /api/v1/orders/{uuid}/`` — retrieve a single order by uuid."""
 
-    queryset = Order.objects.all()
+    queryset = Order.objects.prefetch_related(
+        "bookings__departure",
+        "bookings__seat__car",
+        "bookings__station_from",
+        "bookings__station_to",
+        "bookings__passenger",
+    )
     serializer_class = OrderSerializer
     lookup_field = "uuid"
     lookup_url_kwarg = "uuid"

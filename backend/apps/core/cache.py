@@ -15,7 +15,9 @@ individual bit vectors.
 """
 
 import abc
+import contextlib
 import datetime
+import functools
 from collections.abc import Callable
 from typing import Final, cast
 from uuid import UUID
@@ -23,9 +25,8 @@ from uuid import UUID
 from django.conf import settings
 from django.core.cache import BaseCache, cache as default_cache
 
-from apps.core.types import DepartureSummary, SeatsResponse
+from apps.core.types import DepartureSummary, SeatsResponse, StationDict
 from apps.routes.models import Route
-from apps.stations.models import Station
 
 
 class CacheBase[T, **P](abc.ABC):
@@ -54,15 +55,20 @@ class CacheBase[T, **P](abc.ABC):
     @classmethod
     def set(cls, key: str, value: T) -> None:
         """Set the cached value for this call's args."""
-        cls.cache.set(key, value, timeout=cls.ttl)
+        with contextlib.suppress(ConnectionError):
+            cls.cache.set(key, value, timeout=cls.ttl)
 
     @classmethod
     def wrap(cls, func: Callable[P, T]) -> Callable[P, T]:
         """Decorator to cache a function's result under the key for its args, if not already cached."""
 
+        @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             key = cls.key(*args, **kwargs)
-            hit = cls.cache.get(key, default=cls._MISSING)
+            try:
+                hit = cls.cache.get(key, default=cls._MISSING)
+            except ConnectionError:
+                hit = cls._MISSING
             if hit is not cls._MISSING:
                 return cast(T, hit)
             value = func(*args, **kwargs)
@@ -72,7 +78,7 @@ class CacheBase[T, **P](abc.ABC):
         return wrapper
 
 
-class StationsCache(CacheBase[list[Station], []]):
+class StationsCache(CacheBase[list[StationDict], []]):
     """Cache for the full station list, invalidated by signals on Station changes."""
 
     ttl = settings.CACHE_TTL_STATIONS
@@ -101,6 +107,15 @@ class SeatsCache(CacheBase[SeatsResponse, [UUID | str, str, str]]):
     def key(cls, departure_uuid: UUID | str, from_code: str, to_code: str) -> str:
         gen = DepartureGenerationCache.get(departure_uuid)
         return f"seats:{departure_uuid}:{from_code}:{to_code}:{gen}"
+
+    @classmethod
+    def invalidate(
+        cls, departure_uuid: UUID | str, from_code: str, to_code: str
+    ) -> None:  # pragma: no cover
+        raise NotImplementedError(
+            "SeatsCache uses generation-counter invalidation via "
+            "DepartureGenerationCache.incr(), not direct key deletion."
+        )
 
 
 type StationOrderMaps = tuple[dict[int, int], dict[int, int]]
@@ -136,5 +151,7 @@ class DepartureGenerationCache(CacheBase[int, [str]]):
         try:
             return cls.cache.incr(key)
         except ValueError:
-            cls.set(key, 1)
-            return 1
+            cls.cache.add(key, 0)  # no-op if key already exists
+            return cls.cache.incr(key)
+        except ConnectionError:
+            return -1
