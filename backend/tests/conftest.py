@@ -125,9 +125,15 @@ def route(
     connection_cd: Connection,
 ) -> Route:
     r = Route.objects.create(name="A-D")
-    RouteSegment.objects.create(route=r, segment=connection_ab, order=0, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=r, segment=connection_bc, order=1, stop_duration=timedelta(0))
-    RouteSegment.objects.create(route=r, segment=connection_cd, order=2, stop_duration=timedelta(0))
+    RouteSegment.objects.create(
+        route=r, connection=connection_ab, order=0, stop_duration=timedelta(0)
+    )
+    RouteSegment.objects.create(
+        route=r, connection=connection_bc, order=1, stop_duration=timedelta(0)
+    )
+    RouteSegment.objects.create(
+        route=r, connection=connection_cd, order=2, stop_duration=timedelta(0)
+    )
     return r
 
 
@@ -180,7 +186,7 @@ def backward_departure(route: Route, station_b: Station, station_a: Station) -> 
         base_price=Money(400, "USD"),
     )
     RouteSegment.objects.create(
-        route=backward_route, segment=connection_ba, order=0, stop_duration=timedelta(0)
+        route=backward_route, connection=connection_ba, order=0, stop_duration=timedelta(0)
     )
     backward_train = Train.objects.create(
         route=backward_route, number="200", name="Backward", avg_speed_kmh=100

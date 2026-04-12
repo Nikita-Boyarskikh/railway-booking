@@ -61,7 +61,7 @@ def create_order(
         departure = (
             Departure.objects.select_related("train__route")
             .prefetch_related(
-                "train__route__route_segments__segment",
+                "train__route__route_segments__connection",
             )
             .get(uuid=departure_uuid)
         )

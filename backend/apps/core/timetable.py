@@ -26,25 +26,25 @@ def compute_timetable(departure: Departure) -> list[TimetableStop]:
     stops: list[TimetableStop] = []
 
     for i, route_segment in enumerate(route_segments):
-        segment = route_segment.segment
-        # before traversing this segment, station_from is a stop
+        connection = route_segment.connection
+        # before traversing this connection, station_from is a stop
         if i == 0:
             stops.append(
                 {
-                    "station_id": segment.station_from_id,
+                    "station_id": connection.station_from_id,
                     "arrival_time": None,
                     "departure_time": _format_time(cursor),
                 }
             )
 
         # traverse
-        travel_hours = segment.distance_km / departure.train.avg_speed_kmh
+        travel_hours = connection.distance_km / departure.train.avg_speed_kmh
         cursor += timedelta(hours=travel_hours)
         arrival = cursor
         cursor += route_segment.stop_duration
         stops.append(
             {
-                "station_id": segment.station_to_id,
+                "station_id": connection.station_to_id,
                 "arrival_time": _format_time(arrival),
                 "departure_time": _format_time(cursor),
             }

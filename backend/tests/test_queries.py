@@ -296,7 +296,7 @@ def test_compute_timetable_uses_prefetched_route_segments(
     """When route_segments are prefetched, compute_timetable issues zero queries."""
     dep = (
         Departure.objects.select_related("train__route")
-        .prefetch_related("train__route__route_segments__segment")
+        .prefetch_related("train__route__route_segments__connection")
         .get(pk=departure.pk)
     )
     with django_assert_num_queries(0):

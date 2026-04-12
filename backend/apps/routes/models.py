@@ -14,22 +14,22 @@ class Route(models.Model):
     features = models.JSONField(default=dict, blank=True)
 
     trains: QuerySet[Train]
-    routesegment_set: QuerySet[RouteSegment]
+    route_segments: QuerySet[RouteSegment]
 
     def __str__(self) -> str:
         return self.name
 
 
 class RouteSegment(models.Model):
-    """A segment's position inside a route with optional stop duration."""
+    """A connection's position inside a route with optional stop duration."""
 
     route = models.ForeignKey(Route, related_name="route_segments", on_delete=models.CASCADE)
-    segment = models.ForeignKey("stations.Connection", on_delete=models.PROTECT)
+    connection = models.ForeignKey("stations.Connection", on_delete=models.PROTECT)
     order = models.PositiveIntegerField()
     stop_duration = models.DurationField(default=timedelta)
 
     route_id: int
-    segment_id: int
+    connection_id: int
 
     class Meta:
         unique_together = [("route", "segment", "order")]
@@ -43,4 +43,4 @@ class RouteSegment(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.route.name} #{self.order} {self.segment}"
+        return f"{self.route.name} #{self.order} {self.connection}"

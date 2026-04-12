@@ -20,7 +20,7 @@ def test_timetable_single_segment(
     """First stop has arrival_time=None; second has correct arrival based on distance/speed."""
     route = Route.objects.create(name="A-B")
     RouteSegment.objects.create(
-        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0)
+        route=route, connection=connection_ab, order=0, stop_duration=timedelta(0)
     )
     train = Train.objects.create(route=route, number="S1", name="Single", avg_speed_kmh=100)
     dep = Departure.objects.create(
@@ -49,13 +49,13 @@ def test_timetable_multi_segment_cumulative(
     """Travel time accumulates across segments."""
     route = Route.objects.create(name="A-D")
     RouteSegment.objects.create(
-        route=route, segment=connection_ab, order=0, stop_duration=timedelta(0)
+        route=route, connection=connection_ab, order=0, stop_duration=timedelta(0)
     )
     RouteSegment.objects.create(
-        route=route, segment=connection_bc, order=1, stop_duration=timedelta(0)
+        route=route, connection=connection_bc, order=1, stop_duration=timedelta(0)
     )
     RouteSegment.objects.create(
-        route=route, segment=connection_cd, order=2, stop_duration=timedelta(0)
+        route=route, connection=connection_cd, order=2, stop_duration=timedelta(0)
     )
     train = Train.objects.create(route=route, number="M1", name="Multi", avg_speed_kmh=100)
     dep = Departure.objects.create(
@@ -86,13 +86,13 @@ def test_timetable_stop_duration_added(
     route = Route.objects.create(name="A-C-stop")
     RouteSegment.objects.create(
         route=route,
-        segment=connection_ab,
+        connection=connection_ab,
         order=0,
         stop_duration=timedelta(minutes=10),
     )
     RouteSegment.objects.create(
         route=route,
-        segment=connection_bc,
+        connection=connection_bc,
         order=1,
         stop_duration=timedelta(minutes=30),
     )
@@ -127,7 +127,7 @@ def test_timetable_midnight_crossing(db: None) -> None:
         station_from=s1, station_to=s2, distance_km=200, base_price=Money(100, "USD")
     )
     route = Route.objects.create(name="Night")
-    RouteSegment.objects.create(route=route, segment=conn, order=0, stop_duration=timedelta(0))
+    RouteSegment.objects.create(route=route, connection=conn, order=0, stop_duration=timedelta(0))
     train = Train.objects.create(route=route, number="NI1", name="Night", avg_speed_kmh=100)
     dep = Departure.objects.create(
         train=train,

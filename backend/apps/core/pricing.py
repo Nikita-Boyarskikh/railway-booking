@@ -2,7 +2,7 @@
 
 The booking price for a segment range is::
 
-    base_price + sum(segment.base_price for segments in range)
+    base_price + sum(connection.base_price for segments in range)
                  * route.price_factor * train.price_factor
                  * car.price_factor   * seat.price_factor
 
@@ -20,7 +20,7 @@ from apps.trains.models import Seat
 
 def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) -> Money:
     """
-    Return ``sum(segment.base_price)`` for orders in ``[from_order, to_order)``.
+    Return ``sum(connection.base_price)`` for orders in ``[from_order, to_order)``.
 
     Uses prefetched ``route_segments`` if available to avoid extra DB queries.
     The base price is the only component of the booking price that depends on
@@ -30,7 +30,7 @@ def calc_segment_range_subtotal(route: Route, from_order: int, to_order: int) ->
     """
     return sum(
         (
-            route_segment.segment.base_price
+            route_segment.connection.base_price
             for route_segment in get_route_segments(route)
             if from_order <= route_segment.order < to_order
         ),

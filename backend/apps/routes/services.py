@@ -11,7 +11,7 @@ def get_route_segments(route: Route) -> QuerySet[RouteSegment]:
     return use_prefetched_if_available(
         route,
         "route_segments",
-        lambda qs: qs.select_related("segment"),
+        lambda qs: qs.select_related("connection"),
     )
 
 
@@ -28,8 +28,8 @@ def get_station_order_maps(route: Route) -> StationOrderMaps:
     from_map: dict[int, int] = {}
     to_map: dict[int, int] = {}
     for route_segment in get_route_segments(route):
-        from_map.setdefault(route_segment.segment.station_from_id, route_segment.order)
-        to_map.setdefault(route_segment.segment.station_to_id, route_segment.order + 1)
+        from_map.setdefault(route_segment.connection.station_from_id, route_segment.order)
+        to_map.setdefault(route_segment.connection.station_to_id, route_segment.order + 1)
     return from_map, to_map
 
 

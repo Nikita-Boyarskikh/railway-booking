@@ -29,8 +29,8 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('order', models.PositiveIntegerField()),
                 ('stop_duration', models.DurationField(default=datetime.timedelta)),
+                ('connection', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='stations.connection')),
                 ('route', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='route_segments', to='routes.route')),
-                ('segment', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='stations.connection')),
             ],
             options={
                 'ordering': ['order'],

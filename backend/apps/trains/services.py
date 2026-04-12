@@ -28,7 +28,7 @@ from apps.trains.models import Departure
 def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Departure]:
     """Apply the necessary select_related and prefetch_related calls to a Departure queryset."""
     return qs.select_related("train__route").prefetch_related(
-        "train__route__route_segments__segment",
+        "train__route__route_segments__connection",
         "train__cars__seats",
     )
 
