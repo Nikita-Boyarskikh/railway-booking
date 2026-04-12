@@ -9,7 +9,7 @@ from apps.stations.services import list_stations
 
 
 class StationListView(APIView):
-    """``GET /api/stations/`` — list all stations alphabetically by name.
+    """``GET /api/v1/stations/`` — list all stations alphabetically by name.
 
     The response is cached under ``stations:all`` and invalidated by signal
     whenever a :class:`Station` row changes. See ``apps.core.cache`` and

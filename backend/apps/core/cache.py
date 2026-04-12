@@ -20,17 +20,12 @@ from collections.abc import Callable
 from typing import Final, cast
 from uuid import UUID
 
-from django.core.cache import BaseCache, cache
+from django.conf import settings
+from django.core.cache import BaseCache, cache as default_cache
 
 from apps.core.types import DepartureSummary, SeatsResponse
 from apps.routes.models import Route
 from apps.stations.models import Station
-from config.settings import (
-    CACHE_TTL_SEARCH,
-    CACHE_TTL_SEATS,
-    CACHE_TTL_STATION_ORDER_MAPS,
-    CACHE_TTL_STATIONS,
-)
 
 
 class CacheBase[T, **P](abc.ABC):
@@ -38,7 +33,7 @@ class CacheBase[T, **P](abc.ABC):
 
     _MISSING: Final = object()
 
-    cache: BaseCache = cache
+    cache: BaseCache = default_cache
     ttl: float | None = None
 
     @classmethod
@@ -80,7 +75,7 @@ class CacheBase[T, **P](abc.ABC):
 class StationsCache(CacheBase[list[Station], []]):
     """Cache for the full station list, invalidated by signals on Station changes."""
 
-    ttl = CACHE_TTL_STATIONS
+    ttl = settings.CACHE_TTL_STATIONS
 
     @classmethod
     def key(cls) -> str:
@@ -90,7 +85,7 @@ class StationsCache(CacheBase[list[Station], []]):
 class SearchCache(CacheBase[list[DepartureSummary], [str, str, datetime.date]]):
     """Cache for departure search results. A few seconds of staleness is acceptable."""
 
-    ttl = CACHE_TTL_SEARCH
+    ttl = settings.CACHE_TTL_SEARCH
 
     @classmethod
     def key(cls, from_code: str, to_code: str, date: datetime.date) -> str:
@@ -100,7 +95,7 @@ class SearchCache(CacheBase[list[DepartureSummary], [str, str, datetime.date]]):
 class SeatsCache(CacheBase[SeatsResponse, [UUID | str, str, str]]):
     """Cache for departure seat listings, keyed by generation counter and invalidated by bumping it."""
 
-    ttl = CACHE_TTL_SEATS
+    ttl = settings.CACHE_TTL_SEATS
 
     @classmethod
     def key(cls, departure_uuid: UUID | str, from_code: str, to_code: str) -> str:
@@ -114,7 +109,7 @@ type StationOrderMaps = tuple[dict[int, int], dict[int, int]]
 class StationOrderMapsCache(CacheBase[StationOrderMaps, [Route]]):
     """Cache for the station-order maps for a route, invalidated by signals on RouteSegment changes."""
 
-    ttl = CACHE_TTL_STATION_ORDER_MAPS
+    ttl = settings.CACHE_TTL_STATION_ORDER_MAPS
 
     @classmethod
     def key(cls, route: Route) -> str:
@@ -124,7 +119,7 @@ class StationOrderMapsCache(CacheBase[StationOrderMaps, [Route]]):
 class DepartureGenerationCache(CacheBase[int, [str]]):
     """Cache for the generation counter of a departure, incremented on bookings to orphan seat caches."""
 
-    ttl = None  # never expire on its own
+    ttl = settings.GENERATION_CACHE_TTL
 
     @classmethod
     def key(cls, departure_uuid: str | UUID) -> str:

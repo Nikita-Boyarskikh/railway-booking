@@ -16,18 +16,18 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const getStations = () => http<Station[]>('/api/stations/');
+export const getStations = () => http<Station[]>('/api/v1/stations/');
 
 export const searchDepartures = (from: string, to: string, date: string) =>
-  http<DepartureSummary[]>(`/api/departures/?from=${from}&to=${to}&date=${date}`);
+  http<DepartureSummary[]>(`/api/v1/departures/?from=${from}&to=${to}&date=${date}`);
 
 export const getDepartureSeats = (uuid: string, from: string, to: string) =>
-  http<SeatsResponse>(`/api/departures/${uuid}/seats/?from=${from}&to=${to}`);
+  http<SeatsResponse>(`/api/v1/departures/${uuid}/seats/?from=${from}&to=${to}`);
 
 export const createOrder = (payload: OrderRequest) =>
-  http<OrderResponse>('/api/orders/', {
+  http<OrderResponse>('/api/v1/orders/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 
-export const getOrder = (uuid: string) => http<OrderResponse>(`/api/orders/${uuid}/`);
+export const getOrder = (uuid: string) => http<OrderResponse>(`/api/v1/orders/${uuid}/`);

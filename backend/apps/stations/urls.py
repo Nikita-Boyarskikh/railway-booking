@@ -3,5 +3,5 @@ from django.urls import path
 from apps.stations.views import StationListView
 
 urlpatterns = [
-    path("stations/", StationListView.as_view(), name="station-list"),
+    path("", StationListView.as_view(), name="station-list"),
 ]

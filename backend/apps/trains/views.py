@@ -9,7 +9,7 @@ from apps.trains.services import list_seats, search_departures
 
 
 class DepartureSearchView(APIView):
-    """``GET /api/departures/`` — search departures by ``from``/``to``/``date``."""
+    """``GET /api/v1/departures/`` — search departures by ``from``/``to``/``date``."""
 
     def get(self, request: Request) -> Response:
         """Return matching departure summaries for the validated query."""
@@ -24,7 +24,7 @@ class DepartureSearchView(APIView):
 
 
 class DepartureSeatsView(APIView):
-    """``GET /api/departures/{uuid}/seats/`` — seats grouped by car with price/status."""
+    """``GET /api/v1/departures/{uuid}/seats/`` — seats grouped by car with price/status."""
 
     def get(self, request: Request, uuid: str) -> Response:
         """Return seats for ``uuid`` restricted to the requested segment range."""

@@ -3,6 +3,7 @@
 import uuid as uuid_mod
 
 from constance import config
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from djmoney.money import Money
@@ -16,7 +17,6 @@ from apps.core.types import OrderItemInput
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure, Seat, Train
-from config.settings import DEFAULT_CURRENCY
 
 
 def get_seat(train: Train, car_number: int, seat_number: int) -> Seat:
@@ -76,7 +76,7 @@ def create_order(
 
     # Subtotal depends only on (route, from_order, to_order), so compute it
     # once for all items instead of repeating the RouteSegment scan per seat.
-    base_price = Money(config.BASE_PRICE, currency=DEFAULT_CURRENCY)
+    base_price = Money(config.BASE_PRICE, currency=settings.DEFAULT_CURRENCY)
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
 
     # Sort items by (car_number, seat_number) so two concurrent multi-seat
@@ -85,7 +85,7 @@ def create_order(
     sorted_items = sorted(items, key=lambda i: (i["car_number"], i["seat_number"]))
 
     resolved: list[tuple[OrderItemInput, Seat]] = []
-    total = Money(currency=DEFAULT_CURRENCY)
+    total = Money(0, settings.DEFAULT_CURRENCY)
 
     for item in sorted_items:
         seat = get_seat(departure.train, item["car_number"], item["seat_number"])

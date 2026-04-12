@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -88,17 +88,20 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
-        "TIMEOUT": 60,
+        "TIMEOUT": int(os.environ.get("REDIS_TIMEOUT", "60")),
     },
 }
 
 # ---------------------------------------------------------------------------
 # Application-level cache TTLs (seconds)
 # ---------------------------------------------------------------------------
-CACHE_TTL_STATIONS = 24 * 60 * 60  # 1 day — invalidated by signals
-CACHE_TTL_SEARCH = 30  # departure search — coarse staleness acceptable
-CACHE_TTL_SEATS = 30  # seat listing — generation-keyed, stale entries orphan
-CACHE_TTL_STATION_ORDER_MAPS = 60  # route station-order maps — signal-invalidated
+CACHE_TTL_STATIONS = int(os.environ.get("CACHE_TTL_STATIONS", "0")) or 24 * 60 * 60  # 1 day — invalidated by signals
+CACHE_TTL_SEARCH = int(os.environ.get("CACHE_TTL_SEARCH", "0")) or 30  # departure search — coarse staleness acceptable
+CACHE_TTL_SEATS = int(os.environ.get("CACHE_TTL_SEATS", "0")) or 30  # seat listing — generation-keyed, stale entries orphan
+CACHE_TTL_STATION_ORDER_MAPS = int(os.environ.get("CACHE_TTL_STATION_ORDER_MAPS", "0")) or 60  # route station-order maps — signal-invalidated
+GENERATION_CACHE_TTL = int(os.environ.get("GENERATION_CACHE_TTL", "0")) or 7 * 24 * 60 * 60  # 7 days
+
+API_VERSION = 1
 
 CURRENCIES = ("USD",)
 DEFAULT_CURRENCY = "USD"
@@ -129,7 +132,7 @@ CONSTANCE_ADDITIONAL_FIELDS = {
 }
 CONSTANCE_CONFIG = {
     "BASE_PRICE": (
-        0,
+        os.environ.get("DEFAULT_BASE_PRICE", "0"),
         _("Fixed amount added to every booking, not multiplied by price factors"),
         "decimal_field",
     ),

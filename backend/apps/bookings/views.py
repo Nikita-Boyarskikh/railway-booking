@@ -13,7 +13,7 @@ from apps.stations.exceptions import InvalidStationCodeError
 
 
 class OrderCreateView(APIView):
-    """``POST /api/orders/`` — create an order with one or more bookings."""
+    """``POST /api/v1/orders/`` — create an order with one or more bookings."""
 
     def post(self, request: Request) -> Response:
         """Create an order. Returns 201 on success, 409 on seat conflict, 400 on bad input."""
@@ -48,7 +48,7 @@ class OrderCreateView(APIView):
 
 
 class OrderDetailView(RetrieveAPIView[Order]):
-    """``GET /api/orders/{uuid}/`` — retrieve a single order by uuid."""
+    """``GET /api/v1/orders/{uuid}/`` — retrieve a single order by uuid."""
 
     queryset = Order.objects.all()
     serializer_class = OrderSerializer

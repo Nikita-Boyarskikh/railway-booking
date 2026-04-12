@@ -205,21 +205,21 @@ The HTTP API never exposes internal integer primary keys. Public identifiers are
 ### 1. Search Departures
 
 - User selects: station from (autocomplete on frontend, full list from API), station to, date
-- `GET /api/stations/` — returns all stations as `[{name, code}]`
-- `GET /api/departures/?from={code}&to={code}&date={YYYY-MM-DD}`
+- `GET /api/v1/stations/` — returns all stations as `[{name, code}]`
+- `GET /api/v1/departures/?from={code}&to={code}&date={YYYY-MM-DD}`
 - Response per departure: `uuid`, train number/name, departure time at station A, arrival time at station B, free seat count, minimum price
 
 ### 2. View Seats
 
 - User clicks "Select" on a departure
-- `GET /api/departures/{uuid}/seats/?from={code}&to={code}`
+- `GET /api/v1/departures/{uuid}/seats/?from={code}&to={code}`
 - Response: seats grouped by car. Each car has `number`, `car_type`, `features`, `seats[]`. Each seat has `number`, `seat_type`, `status` (free/occupied), `price`
 - User selects one or more seats
 
 ### 3. Book
 
 - User enters passenger data per selected seat (name, passport, gender, birth date), sees total price
-- `POST /api/orders/`
+- `POST /api/v1/orders/`
 - Request body:
   ```json
   {
@@ -299,8 +299,8 @@ railway-booking/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stations/` | List all stations (`[{name, code}]`) |
-| GET | `/api/departures/?from={code}&to={code}&date=` | Search departures |
-| GET | `/api/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
-| POST | `/api/orders/` | Create order with bookings |
-| GET | `/api/orders/{uuid}/` | Retrieve an order |
+| GET | `/api/v1/stations/` | List all stations (`[{name, code}]`) |
+| GET | `/api/v1/departures/?from={code}&to={code}&date=` | Search departures |
+| GET | `/api/v1/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
+| POST | `/api/v1/orders/` | Create order with bookings |
+| GET | `/api/v1/orders/{uuid}/` | Retrieve an order |

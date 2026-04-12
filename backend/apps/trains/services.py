@@ -9,6 +9,7 @@ from functools import cache
 from uuid import UUID
 
 from constance import config
+from django.conf import settings
 from django.db.models import QuerySet
 from djmoney.money import Money
 from rest_framework.generics import get_object_or_404
@@ -22,7 +23,6 @@ from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
-from config.settings import DEFAULT_CURRENCY
 
 
 def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Departure]:
@@ -110,7 +110,7 @@ def list_seats(departure_uuid: UUID | str, from_code: str, to_code: str) -> Seat
     from_order, to_order = resolve_station_range(route, from_station.pk, to_station.pk)
 
     free_ids = free_seat_ids(departure, from_order, to_order)
-    base_price = Money(config.BASE_PRICE, DEFAULT_CURRENCY)
+    base_price = Money(config.BASE_PRICE, settings.DEFAULT_CURRENCY)
     subtotal = calc_segment_range_subtotal(route, from_order, to_order)
 
     cars_out: list[CarDict] = []

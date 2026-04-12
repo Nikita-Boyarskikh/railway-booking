@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 
 from apps.core.types import SeatStatus
@@ -17,7 +18,7 @@ def api_client() -> APIClient:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/stations/
+# GET /api/v1/stations/
 # ---------------------------------------------------------------------------
 
 
@@ -29,7 +30,7 @@ def test_stations_list(
     station_c: Station,
     station_d: Station,
 ) -> None:
-    r = api_client.get("/api/stations/")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/stations/")
     assert r.status_code == 200, r.json()
     data = r.json()
     assert len(data) == 4
@@ -46,13 +47,13 @@ def test_stations_list_sorted_by_name(
     station_c: Station,
     station_d: Station,
 ) -> None:
-    r = api_client.get("/api/stations/")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/stations/")
     names = [s["name"] for s in r.json()]
     assert names == sorted(names)
 
 
 # ---------------------------------------------------------------------------
-# GET /api/departures/?from=&to=&date=
+# GET /api/v1/departures/?from=&to=&date=
 # ---------------------------------------------------------------------------
 
 
@@ -67,7 +68,7 @@ def test_departures_search(
     departure: Departure,
 ) -> None:
     r = api_client.get(
-        f"/api/departures/?from={station_a.code}&to={station_d.code}&date={departure.date.isoformat()}"
+        f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_d.code}&date={departure.date.isoformat()}"
     )
     assert r.status_code == 200, r.json()
     deps = r.json()
@@ -78,7 +79,7 @@ def test_departures_search(
 
 @pytest.mark.django_db
 def test_departures_search_missing_params(api_client: APIClient) -> None:
-    r = api_client.get("/api/departures/")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/")
     assert r.status_code == 400, r.json()
 
 
@@ -91,7 +92,7 @@ def test_departures_search_no_results(
     departure: Departure,
 ) -> None:
     r = api_client.get(
-        f"/api/departures/?from={station_a.code}&to={station_d.code}&date=2099-01-01"
+        f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_d.code}&date=2099-01-01"
     )
     assert r.status_code == 200, r.json()
     assert r.json() == []
@@ -99,16 +100,16 @@ def test_departures_search_no_results(
 
 @pytest.mark.django_db
 def test_departures_search_invalid_station_codes(api_client: APIClient, station_a: Station) -> None:
-    r = api_client.get(f"/api/departures/?from=UNKNOWN&to={station_a.code}&date=2026-05-01")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from=UNKNOWN&to={station_a.code}&date=2026-05-01")
     assert r.status_code == 400, r.json()
-    r = api_client.get(f"/api/departures/?from={station_a.code}&to=UNKNOWN&date=2026-05-01")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to=UNKNOWN&date=2026-05-01")
     assert r.status_code == 400, r.json()
 
 
 @pytest.mark.django_db
 def test_departures_search_from_to_same(api_client: APIClient, station_a: Station) -> None:
     r = api_client.get(
-        f"/api/departures/?from={station_a.code}&to={station_a.code}&date=2026-05-01"
+        f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_a.code}&date=2026-05-01"
     )
     assert r.status_code == 200, r.json()
     assert r.json() == []
@@ -118,7 +119,7 @@ def test_departures_search_from_to_same(api_client: APIClient, station_a: Statio
 def test_departures_search_invalid_date(
     api_client: APIClient, station_a: Station, station_b: Station
 ) -> None:
-    r = api_client.get(f"/api/departures/?from={station_a.code}&to={station_b.code}&date=invalid")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_b.code}&date=invalid")
     assert r.status_code == 400, r.json()
 
 
@@ -128,7 +129,7 @@ def test_departures_invalid_station_range(
 ) -> None:
     """Station codes in the wrong order (to before from) return empty list."""
     r = api_client.get(
-        f"/api/departures/?from={station_b.code}&to={station_a.code}&date={departure.date.isoformat()}"
+        f"/api/v{settings.API_VERSION}/departures/?from={station_b.code}&to={station_a.code}&date={departure.date.isoformat()}"
     )
     assert r.status_code == 200, r.json()
     assert r.json() == []
@@ -144,7 +145,7 @@ def test_departures_skip_non_matching_departures(
 ) -> None:
     """Departure that doesn't cover the requested station pair is not returned."""
     r = api_client.get(
-        f"/api/departures/?from={station_b.code}&to={station_a.code}&date={departure.date.isoformat()}"
+        f"/api/v{settings.API_VERSION}/departures/?from={station_b.code}&to={station_a.code}&date={departure.date.isoformat()}"
     )
     assert r.status_code == 200, r.json()
     assert len(r.json()) == 1
@@ -152,7 +153,7 @@ def test_departures_skip_non_matching_departures(
 
 
 # ---------------------------------------------------------------------------
-# GET /api/departures/{uuid}/seats/?from=&to=
+# GET /api/v1/departures/{uuid}/seats/?from=&to=
 # ---------------------------------------------------------------------------
 
 
@@ -167,7 +168,7 @@ def test_seats_view(
     departure: Departure,
 ) -> None:
     r = api_client.get(
-        f"/api/departures/{departure.uuid}/seats/?from={station_a.code}&to={station_d.code}"
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from={station_a.code}&to={station_d.code}"
     )
     assert r.status_code == 200, r.json()
     cars = r.json()["cars"]
@@ -187,7 +188,7 @@ def test_seats_view_no_results(
     departure: Departure,
 ) -> None:
     r = api_client.get(
-        f"/api/departures/{departure.uuid}/seats/?from={station_b.code}&to={station_c.code}"
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from={station_b.code}&to={station_c.code}"
     )
     assert r.status_code == 200, r.json()
     assert r.json() == {"cars": []}
@@ -200,14 +201,14 @@ def test_seats_view_departure_not_found(
     station_d: Station,
 ) -> None:
     r = api_client.get(
-        f"/api/departures/{uuid4()}/seats/?from={station_a.code}&to={station_d.code}"
+        f"/api/v{settings.API_VERSION}/departures/{uuid4()}/seats/?from={station_a.code}&to={station_d.code}"
     )
     assert r.status_code == 404, r.json()
 
 
 @pytest.mark.django_db
 def test_seats_view_missing_params(api_client: APIClient, departure: Departure) -> None:
-    r = api_client.get(f"/api/departures/{departure.uuid}/seats/")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/")
     assert r.status_code == 400, r.json()
 
 
@@ -215,14 +216,14 @@ def test_seats_view_missing_params(api_client: APIClient, departure: Departure) 
 def test_seats_view_invalid_station_codes(
     api_client: APIClient, departure: Departure, station_a: Station
 ) -> None:
-    r = api_client.get(f"/api/departures/{departure.uuid}/seats/?from=UNKNOWN&to={station_a.code}")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from=UNKNOWN&to={station_a.code}")
     assert r.status_code == 400, r.json()
-    r2 = api_client.get(f"/api/departures/{departure.uuid}/seats/?from={station_a.code}&to=UNKNOWN")
+    r2 = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from={station_a.code}&to=UNKNOWN")
     assert r2.status_code == 400, r2.json()
 
 
 # ---------------------------------------------------------------------------
-# POST /api/orders/
+# POST /api/v1/orders/
 # ---------------------------------------------------------------------------
 
 
@@ -263,7 +264,7 @@ def test_order_create(
     departure: Departure,
 ) -> None:
     r = api_client.post(
-        "/api/orders/",
+        f"/api/v{settings.API_VERSION}/orders/",
         _order_payload(departure, station_a, station_d, car, seat),
         format="json",
     )
@@ -292,8 +293,8 @@ def test_order_create_conflict_409(
     departure: Departure,
 ) -> None:
     payload = _order_payload(departure, station_a, station_d, car, seat)
-    api_client.post("/api/orders/", payload, format="json")
-    r2 = api_client.post("/api/orders/", payload, format="json")
+    api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
+    r2 = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r2.status_code == 409, r2.json()
     body = r2.json()
     assert "detail" in body
@@ -304,7 +305,7 @@ def test_order_create_conflict_409(
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
 def test_order_create_missing_field_400(api_client: APIClient) -> None:
-    r = api_client.post("/api/orders/", {}, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", {}, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -318,7 +319,7 @@ def test_order_create_empty_items_400(
 ) -> None:
     """Serializer rejects empty items list."""
     r = api_client.post(
-        "/api/orders/",
+        f"/api/v{settings.API_VERSION}/orders/",
         {
             "departure_uuid": str(departure.uuid),
             "station_from_code": station_a.code,
@@ -344,7 +345,7 @@ def test_order_create_same_station_400(
     """Serializer rejects from == to."""
     payload = _order_payload(departure, station_a, station_d, car, seat)
     payload["station_to_code"] = payload["station_from_code"]
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -361,7 +362,7 @@ def test_order_create_invalid_gender_400(
     """Serializer rejects invalid gender choice."""
     payload = _order_payload(departure, station_a, station_d, car, seat)
     payload["items"][0]["passenger"]["gender"] = "invalid"
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -376,7 +377,7 @@ def test_order_create_invalid_station_id_400(
 ) -> None:
     payload = _order_payload(departure, station_a, station_d, car, seat)
     payload["station_to_code"] = "UNKNOWN"
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -391,7 +392,7 @@ def test_order_create_invalid_departure_uuid_400(
 ) -> None:
     payload = _order_payload(departure, station_a, station_d, car, seat)
     payload["departure_uuid"] = uuid4()
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -405,7 +406,7 @@ def test_order_create_invalid_station_range_400(
     departure: Departure,
 ) -> None:
     payload = _order_payload(departure, station_d, station_a, car, seat)
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -420,7 +421,7 @@ def test_order_create_invalid_seat_number_400(
 ) -> None:
     payload = _order_payload(departure, station_d, station_a, car, seat)
     payload["items"][0]["seat_numer"] = 99
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
@@ -435,12 +436,12 @@ def test_order_create_invalid_car_number_400(
 ) -> None:
     payload = _order_payload(departure, station_d, station_a, car, seat)
     payload["items"][0]["car_number"] = 99
-    r = api_client.post("/api/orders/", payload, format="json")
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
 
 # ---------------------------------------------------------------------------
-# GET /api/orders/{uuid}/
+# GET /api/v1/orders/{uuid}/
 # ---------------------------------------------------------------------------
 
 
@@ -455,17 +456,17 @@ def test_order_retrieve(
     departure: Departure,
 ) -> None:
     r = api_client.post(
-        "/api/orders/",
+        f"/api/v{settings.API_VERSION}/orders/",
         _order_payload(departure, station_a, station_d, car, seat),
         format="json",
     )
     order_uuid = r.json()["uuid"]
-    r2 = api_client.get(f"/api/orders/{order_uuid}/")
+    r2 = api_client.get(f"/api/v{settings.API_VERSION}/orders/{order_uuid}/")
     assert r2.status_code == 200, r2.json()
     assert r2.json()["uuid"] == order_uuid
 
 
 @pytest.mark.django_db
 def test_order_retrieve_not_found(api_client: APIClient) -> None:
-    r = api_client.get(f"/api/orders/{uuid4()}/")
+    r = api_client.get(f"/api/v{settings.API_VERSION}/orders/{uuid4()}/")
     assert r.status_code == 404, r.json()

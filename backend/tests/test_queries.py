@@ -10,9 +10,10 @@ per-row lookup — fails loudly instead of silently eating CPU in prod.
 from datetime import date, time
 
 import pytest
+from django.conf import settings
 from django.core.cache import caches
-from django.test.client import Client
 from pytest_django import DjangoAssertNumQueries
+from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking, Order, Passenger
 from apps.bookings.services import create_order
@@ -365,7 +366,7 @@ def test_create_order_query_count_bounded(
 
 
 # ---------------------------------------------------------------------------
-# GET /api/stations/ — hot endpoint, should serve from cache
+# GET /api/v1/stations/ — hot endpoint, should serve from cache
 # ---------------------------------------------------------------------------
 
 
@@ -378,20 +379,20 @@ def test_stations_endpoint_warm_cache_zero_queries(
     django_assert_num_queries: DjangoAssertNumQueries,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
-    """``GET /api/stations/`` serves from StationsCache after the first hit.
+    """``GET /api/v1/stations/`` serves from StationsCache after the first hit.
 
     Cold path issues at most one query (the ordered Station list). Every
     subsequent call must return zero queries until a Station mutation fires
     the invalidation signal.
     """
-    client = Client()
+    api_client = APIClient()
 
     _clear_all_caches()
     with django_assert_max_num_queries(3):
-        r1 = client.get("/api/stations/")
+        r1 = api_client.get(f"/api/v{settings.API_VERSION}/stations/")
     assert r1.status_code == 200, r1.json()
 
     with django_assert_num_queries(0):
-        r2 = client.get("/api/stations/")
+        r2 = api_client.get(f"/api/v{settings.API_VERSION}/stations/")
     assert r2.status_code == 200, r2.json()
     assert r2.json() == r1.json()

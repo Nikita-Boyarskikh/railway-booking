@@ -11,7 +11,7 @@ docker compose up --build
 ```
 
 - Frontend: http://localhost:8080
-- API: http://localhost:8080/api/
+- API: http://localhost:8080/api/v1/
 
 The backend container automatically runs migrations and loads demo fixtures
 (stations, segments, routes, trains, cars, seats, and departures).
@@ -60,11 +60,11 @@ The API exposes public identifiers only — stations by `code`, departures and o
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stations/` | List all stations as `[{name, code}]` |
-| GET | `/api/departures/?from={code}&to={code}&date=` | Search departures |
-| GET | `/api/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
-| POST | `/api/orders/` | Create order with bookings (see backend README for payload) |
-| GET | `/api/orders/{uuid}/` | Retrieve an order |
+| GET | `/api/v1/stations/` | List all stations as `[{name, code}]` |
+| GET | `/api/v1/departures/?from={code}&to={code}&date=` | Search departures |
+| GET | `/api/v1/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
+| POST | `/api/v1/orders/` | Create order with bookings (see backend README for payload) |
+| GET | `/api/v1/orders/{uuid}/` | Retrieve an order |
 
 ## Tests
 

@@ -51,7 +51,7 @@ framework (Redis in compose via `REDIS_URL`, `LocMemCache` in tests):
 
 | Key | What | TTL | Invalidation |
 |---|---|---|---|
-| `stations:all` | `GET /api/stations/` response | 1 day | `post_save`/`post_delete` signal on `Station` |
+| `stations:all` | `GET /api/v1/stations/` response | 1 day | `post_save`/`post_delete` signal on `Station` |
 | `search:{from}:{to}:{date}` | `search_departures` output | 30 s | TTL-only; a short window of stale free counts is acceptable |
 | `seats:{uuid}:{from}:{to}:g{gen}` | `list_seats` output | 60 s | Generation counter `dep:gen:{uuid}` bumped by `create_order` via `transaction.on_commit` — stale keys orphan and die on TTL |
 
@@ -70,7 +70,7 @@ uv run python manage.py loaddata fixtures/demo.json
 uv run python manage.py runserver
 ```
 
-API: http://localhost:8000/api/ — admin: http://localhost:8000/admin/
+API: http://localhost:8000/api/v1/ — admin: http://localhost:8000/admin/
 
 ## Common commands
 
@@ -108,11 +108,11 @@ The API uses public identifiers only: stations by `code`, departures and orders 
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/stations/` | List stations as `[{name, code}]` |
-| GET | `/api/departures/?from={code}&to={code}&date={YYYY-MM-DD}` | Search departures (returns `uuid`, train info, times, free count, min price) |
-| GET | `/api/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car (`number`, `car_type`, `seats[]` with `number`, `seat_type`, `status`, `price`) |
-| POST | `/api/orders/` | Create order (see payload below) |
-| GET | `/api/orders/{uuid}/` | Retrieve an order by uuid |
+| GET | `/api/v1/stations/` | List stations as `[{name, code}]` |
+| GET | `/api/v1/departures/?from={code}&to={code}&date={YYYY-MM-DD}` | Search departures (returns `uuid`, train info, times, free count, min price) |
+| GET | `/api/v1/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car (`number`, `car_type`, `seats[]` with `number`, `seat_type`, `status`, `price`) |
+| POST | `/api/v1/orders/` | Create order (see payload below) |
+| GET | `/api/v1/orders/{uuid}/` | Retrieve an order by uuid |
 
 ### Create-order payload
 
