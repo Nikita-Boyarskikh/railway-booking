@@ -19,8 +19,8 @@ class Station(models.Model):
 
     bookings_from: RelatedManager[Booking]
     bookings_to: RelatedManager[Booking]
-    segments_out: RelatedManager[Connection]
-    segments_in: RelatedManager[Connection]
+    connections_out: RelatedManager[Connection]
+    connections_in: RelatedManager[Connection]
 
     def __str__(self) -> str:
         return f"{self.code} — {self.name}"
@@ -29,8 +29,10 @@ class Station(models.Model):
 class Connection(models.Model):
     """A span of track between two adjacent stations with a base price."""
 
-    station_from = models.ForeignKey(Station, related_name="segments_out", on_delete=models.CASCADE)
-    station_to = models.ForeignKey(Station, related_name="segments_in", on_delete=models.CASCADE)
+    station_from = models.ForeignKey(
+        Station, related_name="connections_out", on_delete=models.CASCADE
+    )
+    station_to = models.ForeignKey(Station, related_name="connections_in", on_delete=models.CASCADE)
     distance_km = models.FloatField(validators=[MinValueValidator(0.001)])
     base_price = MoneyField(max_digits=10, decimal_places=2)
 

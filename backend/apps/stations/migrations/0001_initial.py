@@ -29,8 +29,8 @@ class Migration(migrations.Migration):
                 ('distance_km', models.FloatField(validators=[django.core.validators.MinValueValidator(0.001)])),
                 ('base_price_currency', djmoney.models.fields.CurrencyField(choices=[('USD', 'US Dollar')], default='USD', editable=False, max_length=3)),
                 ('base_price', djmoney.models.fields.MoneyField(decimal_places=2, max_digits=10)),
-                ('station_from', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='segments_out', to='stations.station')),
-                ('station_to', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='segments_in', to='stations.station')),
+                ('station_from', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='connections_out', to='stations.station')),
+                ('station_to', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='connections_in', to='stations.station')),
             ],
         ),
     ]

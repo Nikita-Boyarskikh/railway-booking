@@ -154,6 +154,73 @@ def test_free_seat_ids_multiple_bookings_different_seats(
     assert free == set()
 
 
+@pytest.mark.django_db
+def test_free_seat_ids_contained_overlap(
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
+    departure: Departure,
+    seat: Seat,
+    seat2: Seat,
+    passenger: Passenger,
+) -> None:
+    """Seat booked A→D is occupied for B→C (request contained in booking)."""
+    create_booking(departure, seat, station_a, station_d, passenger)
+    free = free_seat_ids(departure, 1, 2)  # B→C inside A→D
+    assert seat.pk not in free
+    assert seat2.pk in free
+
+
+@pytest.mark.django_db
+def test_free_seat_ids_enclosing_overlap(
+    station_b: Station,
+    station_c: Station,
+    departure: Departure,
+    seat: Seat,
+    seat2: Seat,
+    passenger: Passenger,
+) -> None:
+    """Seat booked B→C is occupied for A→D (booking contained in request)."""
+    create_booking(departure, seat, station_b, station_c, passenger)
+    free = free_seat_ids(departure, 0, 3)  # A→D encloses B→C
+    assert seat.pk not in free
+    assert seat2.pk in free
+
+
+@pytest.mark.django_db
+def test_free_seat_ids_multiple_non_overlapping_same_seat(
+    station_a: Station,
+    station_b: Station,
+    station_c: Station,
+    station_d: Station,
+    departure: Departure,
+    seat: Seat,
+    passenger: Passenger,
+) -> None:
+    """Same seat booked A→B and C→D leaves B→C free."""
+    create_booking(departure, seat, station_a, station_b, passenger)
+    create_booking(departure, seat, station_c, station_d, passenger)
+    free = free_seat_ids(departure, 1, 2)  # B→C
+    assert seat.pk in free
+
+
+@pytest.mark.django_db
+def test_free_seat_ids_fully_covered_by_multiple_bookings(
+    station_a: Station,
+    station_b: Station,
+    station_d: Station,
+    departure: Departure,
+    seat: Seat,
+    passenger: Passenger,
+) -> None:
+    """Seat booked A→B and B→D: occupied for A→D (union covers request)."""
+    create_booking(departure, seat, station_a, station_b, passenger)
+    create_booking(departure, seat, station_b, station_d, passenger)
+    free = free_seat_ids(departure, 0, 3)  # A→D
+    assert seat.pk not in free
+
+
 # ---------------------------------------------------------------------------
 # Integration tests (via create_order)
 # ---------------------------------------------------------------------------

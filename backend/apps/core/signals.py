@@ -19,7 +19,7 @@ def _on_station_change(sender: type[Station], instance: Station, **kwargs: Any) 
         StationsCache.invalidate()
 
 
-@receiver([post_save, post_delete], sender=Connection)
+@receiver(post_save, sender=Connection)
 def _on_connection_change(sender: type[Connection], instance: Connection, **kwargs: Any) -> None:
     @transaction.on_commit
     def clear_caches() -> None:
@@ -40,7 +40,7 @@ def _on_route_segment_change(
 ) -> None:
     @transaction.on_commit
     def clear_caches() -> None:
-        StationOrderMapsCache.invalidate(instance.route)
+        StationOrderMapsCache.invalidate(Route(pk=instance.route_id))
 
 
 @receiver([post_save, post_delete], sender=Departure)
@@ -50,7 +50,7 @@ def _on_departure_change(sender: type[Departure], instance: Departure, **kwargs:
         DepartureGenerationCache.incr(instance.uuid)
 
 
-@receiver([post_save, post_delete], sender=Train)
+@receiver(post_save, sender=Train)
 def _on_train_change(sender: type[Train], instance: Train, **kwargs: Any) -> None:
     @transaction.on_commit
     def clear_caches() -> None:
@@ -58,7 +58,7 @@ def _on_train_change(sender: type[Train], instance: Train, **kwargs: Any) -> Non
             DepartureGenerationCache.incr(departure.uuid)
 
 
-@receiver([post_save, post_delete], sender=Car)
+@receiver(post_save, sender=Car)
 def _on_car_change(sender: type[Car], instance: Car, **kwargs: Any) -> None:
     @transaction.on_commit
     def clear_caches() -> None:
@@ -66,7 +66,7 @@ def _on_car_change(sender: type[Car], instance: Car, **kwargs: Any) -> None:
             DepartureGenerationCache.incr(departure.uuid)
 
 
-@receiver([post_save, post_delete], sender=Seat)
+@receiver(post_save, sender=Seat)
 def _on_seat_change(sender: type[Seat], instance: Seat, **kwargs: Any) -> None:
     @transaction.on_commit
     def clear_caches() -> None:

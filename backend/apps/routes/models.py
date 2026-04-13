@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from django.core.validators import MinValueValidator
 from django.db import models
 
 if TYPE_CHECKING:
@@ -13,7 +14,9 @@ class Route(models.Model):
     """An ordered chain of :class:`~apps.stations.models.Connection` forming a full path."""
 
     name = models.CharField(max_length=128)
-    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
+    price_factor = models.DecimalField(
+        max_digits=6, decimal_places=3, default=1, validators=[MinValueValidator(0)]
+    )
     features = models.JSONField(default=dict, blank=True)
 
     trains: RelatedManager[Train]

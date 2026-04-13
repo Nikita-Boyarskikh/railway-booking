@@ -38,6 +38,14 @@ if TYPE_CHECKING:
         (0, 1, "2", "1.1", "1.5", "1.5", "1090.00"),
         # middle segment only (1..2 = BC = 300): 300 + 100 = 400
         (1, 2, "1", "1", "1", "1", "400.00"),
+        # zero route_factor: subtotal zeroed, price = base_price only
+        (0, 1, "0", "1", "1", "1", "100.00"),
+        # zero seat_factor: same effect
+        (0, 1, "1", "1", "1", "0", "100.00"),
+        # zero car_factor: same effect
+        (0, 1, "1", "1", "0", "1", "100.00"),
+        # zero train_factor: same effect
+        (0, 1, "1", "0", "1", "1", "100.00"),
     ],
     ids=[
         "full_route",
@@ -48,6 +56,10 @@ if TYPE_CHECKING:
         "train_factor_1.5x",
         "all_factors_combined",
         "middle_segment_BC",
+        "zero_route_factor",
+        "zero_seat_factor",
+        "zero_car_factor",
+        "zero_train_factor",
     ],
 )
 def test_pricing(

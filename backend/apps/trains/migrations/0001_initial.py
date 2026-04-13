@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('number', models.CharField(db_index=True, max_length=16, unique=True)),
                 ('name', models.CharField(blank=True, default='', max_length=128)),
                 ('avg_speed_kmh', models.FloatField(validators=[django.core.validators.MinValueValidator(0.1)])),
-                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6)),
+                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6, validators=[django.core.validators.MinValueValidator(0)])),
                 ('features', models.JSONField(blank=True, default=dict)),
                 ('route', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='trains', to='routes.route')),
             ],
@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
                 ('number', models.PositiveIntegerField(verbose_name='Car number')),
                 ('car_type', models.CharField(choices=[('common', 'Common'), ('sleeper', 'Sleeper'), ('luxury', 'Luxury'), ('dining', 'Dining'), ('other', 'Other')], default='common', max_length=32)),
                 ('features', models.JSONField(blank=True, default=dict)),
-                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6)),
+                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6, validators=[django.core.validators.MinValueValidator(0)])),
                 ('train', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cars', to='trains.train')),
             ],
             options={
@@ -47,12 +47,12 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('number', models.PositiveIntegerField()),
                 ('seat_type', models.CharField(choices=[('common', 'Common'), ('vip', 'VIP'), ('sleeper', 'Sleeper'), ('other', 'Other')], default='common', max_length=32)),
-                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6)),
+                ('price_factor', models.DecimalField(decimal_places=3, default=1, max_digits=6, validators=[django.core.validators.MinValueValidator(0)])),
                 ('car', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='seats', to='trains.car')),
             ],
             options={
                 'ordering': ['number'],
-                'constraints': [models.UniqueConstraint(fields=('car', 'number'), name='seat_cat_number_uniq')],
+                'constraints': [models.UniqueConstraint(fields=('car', 'number'), name='seat_car_number_uniq')],
             },
         ),
         migrations.CreateModel(

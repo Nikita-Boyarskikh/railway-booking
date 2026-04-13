@@ -33,6 +33,7 @@ class BookingAdmin(admin.ModelAdmin[Booking]):
     """Admin for :class:`Booking`"""
 
     list_display = ("order__uuid", "departure", "seat", "station_from", "station_to", "passenger")
+    exclude = ("segment_range",)  # auto-computed in Booking.clean()
     search_fields = (
         "order__uuid",
         "departure__train__number",

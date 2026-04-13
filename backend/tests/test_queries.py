@@ -46,14 +46,16 @@ def test_search_departures_query_count_constant_in_bookings(
     seat: Seat,
     seat2: Seat,
     departure: Departure,
+    django_assert_num_queries: DjangoAssertNumQueries,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Query count for ``search_departures`` must not grow with booking count."""
     # Baseline: with zero bookings, call once to warm any lazy imports.
     # stations by code + route + (route_segments, connections, cars, seats) prefetch
     # + free_seat_ids overlap probe + constance = 8 queries total.
-    with django_assert_max_num_queries(8):
+    with django_assert_max_num_queries(8) as first:
         results_empty = search_departures(station_a.code, station_d.code, departure.date)
+    first_queries = len(first.captured_queries)
     assert results_empty
     assert results_empty[0]["free_seat_count"] == 2
 
@@ -100,7 +102,8 @@ def test_search_departures_query_count_constant_in_bookings(
     assert created > 0
 
     # With many bookings, the query count must stay under the same ceiling.
-    with django_assert_max_num_queries(8):
+    _clear_all_caches()
+    with django_assert_num_queries(first_queries):
         results_full = search_departures(station_a.code, station_d.code, departure.date)
     assert results_full
 
@@ -216,6 +219,7 @@ def test_list_seats_query_count_constant_in_bookings(
     seat2: Seat,
     departure: Departure,
     passenger: Passenger,
+    django_assert_num_queries: DjangoAssertNumQueries,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """``list_seats`` query count is independent of booking density on the
@@ -237,13 +241,8 @@ def test_list_seats_query_count_constant_in_bookings(
     )
 
     _clear_all_caches()
-    with django_assert_max_num_queries(8) as ctx_with_booking:
+    with django_assert_num_queries(empty):
         list_seats(departure.uuid, station_a.code, station_d.code)
-    with_booking = len(ctx_with_booking.captured_queries)
-
-    assert with_booking <= empty, (
-        f"list_seats got slower with one booking: {empty} → {with_booking}"
-    )
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,13 @@ import pytest
 from django.test.testcases import TestCase
 
 from apps.bookings.services import create_order
-from apps.core.cache import DepartureGenerationCache, SearchCache, SeatsCache, StationsCache
+from apps.core.cache import (
+    DepartureGenerationCache,
+    SearchCache,
+    SeatsCache,
+    StationOrderMapsCache,
+    StationsCache,
+)
 from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
 from apps.trains.services import list_seats, search_departures
@@ -15,6 +21,8 @@ from tests.conftest import make_order_item
 
 if TYPE_CHECKING:
     from apps.bookings.models import Passenger
+    from apps.routes.models import Route
+    from apps.stations.models import Connection
     from apps.trains.models import Car, Departure, Seat
 
 
@@ -157,3 +165,100 @@ def test_search_departures_empty_result_cached(
     # The empty list should be in the cache
     cached = SearchCache.get(station_a.code, station_d.code, future)
     assert cached == []
+
+
+# ---------------------------------------------------------------------------
+# Signal-based cache invalidation — StationOrderMapsCache
+# ---------------------------------------------------------------------------
+
+_SOM_SENTINEL: tuple[dict[int, int], dict[int, int]] = ({999: 0}, {999: 1})
+
+
+@pytest.mark.django_db
+def test_connection_change_invalidates_station_order_maps(
+    route: Route,
+    connection_ab: Connection,
+) -> None:
+    """Saving a Connection invalidates StationOrderMapsCache for its routes."""
+    StationOrderMapsCache.set(StationOrderMapsCache.key(route), _SOM_SENTINEL)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        connection_ab.distance_km = 999
+        connection_ab.save()
+    assert StationOrderMapsCache.get(route) is None
+
+
+@pytest.mark.django_db
+def test_route_change_invalidates_station_order_maps(route: Route) -> None:
+    """Saving a Route invalidates its StationOrderMapsCache entry."""
+    StationOrderMapsCache.set(StationOrderMapsCache.key(route), _SOM_SENTINEL)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        route.name = "Modified"
+        route.save()
+    assert StationOrderMapsCache.get(route) is None
+
+
+@pytest.mark.django_db
+def test_route_segment_change_invalidates_station_order_maps(
+    route: Route,
+) -> None:
+    """Saving a RouteSegment invalidates StationOrderMapsCache for its route."""
+    StationOrderMapsCache.set(StationOrderMapsCache.key(route), _SOM_SENTINEL)
+    rs = route.route_segments.first()
+    assert rs is not None
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        rs.order = 99
+        rs.save()
+    assert StationOrderMapsCache.get(route) is None
+
+
+# ---------------------------------------------------------------------------
+# Signal-based cache invalidation — DepartureGenerationCache
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_departure_change_bumps_generation(departure: Departure) -> None:
+    """Saving a Departure increments its generation counter."""
+    gen_before = DepartureGenerationCache.get(departure.uuid)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        departure.departure_time = departure.departure_time
+        departure.save()
+    assert DepartureGenerationCache.get(departure.uuid) > gen_before
+
+
+@pytest.mark.django_db
+def test_train_change_bumps_departure_generation(
+    departure: Departure,
+) -> None:
+    """Saving a Train bumps generation for all its departures."""
+    gen_before = DepartureGenerationCache.get(departure.uuid)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        departure.train.name = "Renamed"
+        departure.train.save()
+    assert DepartureGenerationCache.get(departure.uuid) > gen_before
+
+
+@pytest.mark.django_db
+def test_car_change_bumps_departure_generation(
+    car: Car,
+    departure: Departure,
+) -> None:
+    """Saving a Car bumps generation for departures of the car's train."""
+    gen_before = DepartureGenerationCache.get(departure.uuid)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        car.car_type = "luxury"
+        car.save()
+    assert DepartureGenerationCache.get(departure.uuid) > gen_before
+
+
+@pytest.mark.django_db
+def test_seat_change_bumps_departure_generation(
+    seat: Seat,
+    departure: Departure,
+) -> None:
+    """Saving a Seat bumps generation for departures of the seat's train."""
+    gen_before = DepartureGenerationCache.get(departure.uuid)
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        seat.seat_type = "vip"
+        seat.save()
+    assert DepartureGenerationCache.get(departure.uuid) > gen_before

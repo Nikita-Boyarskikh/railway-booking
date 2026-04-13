@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import IntegerRangeField, RangeOperators
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
@@ -99,3 +100,46 @@ class Booking(models.Model):
             car_number=self.seat.car.number,
             seat_number=self.seat.number,
         )
+
+    def clean(self) -> None:
+        """Cross-field integrity checks."""
+        errors: dict[str, list[ValidationError]] = {}
+
+        # All FK ids must be set before we can cross-check.
+        if not (self.departure_id and self.seat_id and self.station_from_id and self.station_to_id):
+            return
+
+        # 1. Seat must belong to the departure's train.
+        if self.seat.car.train_id != self.departure.train_id:
+            errors.setdefault("seat", []).append(
+                ValidationError(
+                    _("Seat does not belong to the departure's train."),
+                    code="seat_wrong_train",
+                )
+            )
+
+        # 2-4. Both stations must be on the route, in the correct direction.
+        #      Also auto-compute segment_range from the station positions.
+        from apps.routes.exceptions import InvalidStationRangeError
+        from apps.routes.services import resolve_station_range
+
+        route = self.departure.train.route
+        try:
+            from_order, to_order = resolve_station_range(
+                route, self.station_from_id, self.station_to_id
+            )
+        except InvalidStationRangeError:
+            errors.setdefault("station_from", []).append(
+                ValidationError(
+                    _("Stations are not on this route or are in the wrong order."),
+                    code="invalid_station_range",
+                )
+            )
+        else:
+            # 5. Auto-fill segment_range so admin users don't have to.
+            from apps.core.availability import make_segment_range
+
+            self.segment_range = make_segment_range(from_order, to_order)
+
+        if errors:
+            raise ValidationError(errors)

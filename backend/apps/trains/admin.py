@@ -62,13 +62,17 @@ def _bulk_create_seats(car: Car, n: int) -> None:
 class TrainAdmin(admin.ModelAdmin[Train]):
     """Admin for :class:`Train` with an inline list of cars."""
 
-    inlines = [CarInline]
-    list_display = ("number", "name", "route")
+    inlines = (CarInline,)
+    list_display = ("number", "name", "route", "number_of_cars")
     search_fields = ("number", "name", "route__name")
     ordering = ("number",)
+    readonly_fields = ("number_of_cars",)
+
+    def number_of_cars(self, obj: Train) -> int:
+        return obj.cars.count()
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Train]:
-        return super().get_queryset(request).select_related("route")
+        return super().get_queryset(request).select_related("route").prefetch_related("cars")
 
     def save_formset(self, request: HttpRequest, form: Any, formset: Any, change: Any) -> None:
         """After saving the car inline formset, bulk-create seats if requested."""
@@ -100,14 +104,18 @@ class CarAdmin(admin.ModelAdmin[Car]):
     """Admin for :class:`Car` with inline seats and optional bulk creation."""
 
     form = CarAdminForm
-    inlines = [SeatInline]
-    list_display = ("train", "number", "car_type", "price_factor")
+    inlines = (SeatInline,)
+    list_display = ("train", "number", "car_type", "number_of_seats", "price_factor")
     search_fields = ("train__number", "train__name")
     ordering = ("train", "number")
     list_filter = ("car_type",)
+    readonly_fields = ("number_of_seats",)
+
+    def number_of_seats(self, obj: Car) -> int:
+        return obj.seats.count()
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Car]:
-        return super().get_queryset(request).select_related("train")
+        return super().get_queryset(request).select_related("train").prefetch_related("seats")
 
     def save_model(self, request: HttpRequest, obj: Car, form: Any, change: Any) -> None:
         """Save the car and optionally bulk-create seats numbered ``1..N``."""
@@ -134,10 +142,10 @@ class DepartureAdmin(admin.ModelAdmin[Departure]):
     """Admin for :class:`Departure`."""
 
     date_hierarchy = "date"
-    list_display = ("train", "date", "departure_time")
+    list_display = ("train", "date", "departure_time", "train__route")
     search_fields = ("train__number", "train__name")
     ordering = ("date", "departure_time", "train")
     list_filter = ("date",)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Departure]:
-        return super().get_queryset(request).select_related("train")
+        return super().get_queryset(request).select_related("train__route")

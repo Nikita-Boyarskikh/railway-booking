@@ -34,7 +34,42 @@ def test_create_order_same_station(
     """Same from/to falls through to route resolution and is rejected."""
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(InvalidStationRangeError):
-        create_order(departure.uuid, station_a.code, station_a.code, [item])
+        create_order(departure.uuid, station_a.code, station_a.code, [item], Money(1000, "USD"))
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_create_duplicate_order(
+    station_a: Station,
+    station_b: Station,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    passenger: Passenger,
+) -> None:
+    """Booking already occupied seat was rejected."""
+    item = make_order_item(car.number, seat.number, passenger)
+    create_order(departure.uuid, station_a.code, station_b.code, [item])
+    with pytest.raises(SeatUnavailableError):
+        create_order(departure.uuid, station_a.code, station_b.code, [item])
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_create_order_with_duplicated_items(
+    station_a: Station,
+    station_b: Station,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    passenger: Passenger,
+) -> None:
+    """Booking already occupied seat was rejected."""
+    item = make_order_item(car.number, seat.number, passenger)
+    with pytest.raises(SeatUnavailableError):
+        create_order(
+            departure.uuid, station_a.code, station_b.code, [item, item],
+        )
 
 
 @pytest.mark.django_db

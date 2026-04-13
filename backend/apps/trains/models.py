@@ -17,7 +17,9 @@ class Train(models.Model):
     number = models.CharField(max_length=16, unique=True, db_index=True)
     name = models.CharField(max_length=128, blank=True, default="")
     avg_speed_kmh = models.FloatField(validators=[MinValueValidator(0.1)])
-    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
+    price_factor = models.DecimalField(
+        max_digits=6, decimal_places=3, default=1, validators=[MinValueValidator(0)]
+    )
     features = models.JSONField(default=dict, blank=True)
 
     cars: RelatedManager[Car]
@@ -45,7 +47,9 @@ class Car(models.Model):
     number = models.PositiveIntegerField(verbose_name=_("Car number"))
     car_type = models.CharField(max_length=32, default=CarType.COMMON, choices=CarType.choices)
     features = models.JSONField(default=dict, blank=True)
-    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
+    price_factor = models.DecimalField(
+        max_digits=6, decimal_places=3, default=1, validators=[MinValueValidator(0)]
+    )
 
     seats: RelatedManager[Seat]
     train_id: int
@@ -75,7 +79,9 @@ class Seat(models.Model):
     car = models.ForeignKey(Car, related_name="seats", on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
     seat_type = models.CharField(max_length=32, default=SeatType.COMMON, choices=SeatType.choices)
-    price_factor = models.DecimalField(max_digits=6, decimal_places=3, default=1)
+    price_factor = models.DecimalField(
+        max_digits=6, decimal_places=3, default=1, validators=[MinValueValidator(0)]
+    )
 
     car_id: int
 
