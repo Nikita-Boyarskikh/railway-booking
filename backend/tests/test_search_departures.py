@@ -9,13 +9,14 @@ from djmoney.money import Money
 
 from apps.bookings.services import create_order
 from apps.stations.exceptions import InvalidStationCodeError
-from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import search_departures
 from tests.conftest import make_order_item
+from tests.factories import CarFactory, DepartureFactory, SeatFactory, TrainFactory
 
 if TYPE_CHECKING:
     from apps.bookings.models import Passenger
     from apps.stations.models import Station
+    from apps.trains.models import Car, Departure, Seat
 
 
 @pytest.mark.django_db
@@ -74,21 +75,21 @@ def test_search_departures_many(
     seat2: Seat,
     departure: Departure,
 ) -> None:
-    speed_train = Train.objects.create(
+    speed_train = TrainFactory(
         route=departure.train.route,
         number="XXX",
         name="Speed Train",
         avg_speed_kmh=200,
         price_factor=2,
     )
-    speed_train_car = Car.objects.create(train=speed_train, number=1)
-    Seat.objects.create(car=speed_train_car, number=1)
-    speed_departure1 = Departure.objects.create(
+    speed_train_car = CarFactory(train=speed_train, number=1, price_factor=Decimal("1.0"))
+    SeatFactory(car=speed_train_car, number=1, price_factor=Decimal("1.0"))
+    speed_departure1 = DepartureFactory(
         train=speed_train,
         date=departure.date,
         departure_time=time(departure.departure_time.hour + 1, departure.departure_time.minute),
     )
-    Departure.objects.create(
+    DepartureFactory(
         train=speed_train,
         date=departure.date,
         departure_time=time(departure.departure_time.hour + 2, departure.departure_time.minute),

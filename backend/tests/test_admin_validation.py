@@ -7,17 +7,28 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory
-from djmoney.money import Money
 
-from apps.bookings.models import Booking, Order, Passenger
-from apps.core.availability import make_segment_range
+from apps.bookings.models import Booking, Passenger
 from apps.routes.admin import RouteSegmentFormSet, RouteSegmentInline
 from apps.routes.models import Route, RouteSegment
-from apps.stations.models import Connection, Station
-from apps.trains.models import Car, Departure, Seat, Train
+from tests.factories import (
+    BookingFactory,
+    CarFactory,
+    ConnectionFactory,
+    DepartureFactory,
+    OrderFactory,
+    RouteFactory,
+    RouteSegmentFactory,
+    SeatFactory,
+    StationFactory,
+    TrainFactory,
+)
 
 if TYPE_CHECKING:
     from django.forms import BaseInlineFormSet, ModelForm
+
+    from apps.stations.models import Connection, Station
+    from apps.trains.models import Car, Departure, Seat
 
 
 # ---------------------------------------------------------------------------
@@ -271,25 +282,15 @@ def test_booking_clean_seat_wrong_train(
     passenger: Passenger,
 ) -> None:
     """Seat from a different train is rejected."""
-    other_route = Route.objects.create(name="Other")
-    conn = Connection.objects.create(
-        station_from=station_a,
-        station_to=station_d,
-        distance_km=100,
-        base_price=Money(100, "USD"),
-    )
-    RouteSegment.objects.create(route=other_route, connection=conn, order=0)
-    other_train = Train.objects.create(
-        route=other_route,
-        number="OTHER",
-        name="Other",
-        avg_speed_kmh=100,
-    )
-    other_car = Car.objects.create(train=other_train, number=1)
-    other_seat = Seat.objects.create(car=other_car, number=1)
+    other_route = RouteFactory(name="Other")
+    conn = ConnectionFactory(station_from=station_a, station_to=station_d)
+    RouteSegmentFactory(route=other_route, connection=conn, order=0)
+    other_train = TrainFactory(route=other_route)
+    other_car = CarFactory(train=other_train)
+    other_seat = SeatFactory(car=other_car)
 
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=other_seat,
         station_from=station_a,
@@ -315,11 +316,11 @@ def test_booking_clean_station_not_on_route(
     passenger: Passenger,
 ) -> None:
     """Stations not on the departure's route are rejected."""
-    orphan_x = Station.objects.create(name="X", code="X")
-    orphan_y = Station.objects.create(name="Y", code="Y")
+    orphan_x = StationFactory()
+    orphan_y = StationFactory()
 
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=seat,
         station_from=orphan_x,
@@ -348,7 +349,7 @@ def test_booking_clean_reversed_stations(
 ) -> None:
     """D→A (wrong direction) is rejected."""
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=seat,
         station_from=station_d,
@@ -376,7 +377,7 @@ def test_booking_clean_same_station(
 ) -> None:
     """A→A (same station) is rejected."""
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=seat,
         station_from=station_a,
@@ -405,7 +406,7 @@ def test_booking_clean_valid_auto_fills_segment_range(
 ) -> None:
     """Valid booking gets segment_range auto-computed by clean()."""
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=seat,
         station_from=station_a,
@@ -431,7 +432,7 @@ def test_booking_clean_partial_route_segment_range(
 ) -> None:
     """B→D gets segment_range [1, 3)."""
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=seat,
         station_from=station_b,
@@ -456,26 +457,16 @@ def test_booking_clean_wrong_train_and_wrong_stations(
     passenger: Passenger,
 ) -> None:
     """Both seat-wrong-train and invalid-stations are reported together."""
-    other_route = Route.objects.create(name="Z")
-    orphan = Station.objects.create(name="Z", code="Z")
-    conn = Connection.objects.create(
-        station_from=orphan,
-        station_to=orphan,
-        distance_km=1,
-        base_price=Money(1, "USD"),
-    )
-    RouteSegment.objects.create(route=other_route, connection=conn, order=0)
-    other_train = Train.objects.create(
-        route=other_route,
-        number="Z",
-        name="Z",
-        avg_speed_kmh=100,
-    )
-    other_car = Car.objects.create(train=other_train, number=1)
-    other_seat = Seat.objects.create(car=other_car, number=1)
+    orphan = StationFactory()
+    conn = ConnectionFactory(station_from=orphan, station_to=orphan)
+    other_route = RouteFactory()
+    RouteSegmentFactory(route=other_route, connection=conn, order=0)
+    other_train = TrainFactory(route=other_route)
+    other_car = CarFactory(train=other_train)
+    other_seat = SeatFactory(car=other_car)
 
     booking = Booking(
-        order=Order.objects.create(),
+        order=OrderFactory(),
         departure=departure,
         seat=other_seat,
         station_from=orphan,
@@ -497,34 +488,21 @@ def test_booking_clean_wrong_train_and_wrong_stations(
 
 def _create_booking_for_route(route: Route) -> Booking:
     """Create a minimal booking chain: Route → Train → Departure → Booking."""
-    train = Train.objects.create(route=route, number="LCK", name="Locked", avg_speed_kmh=100)
-    car = Car.objects.create(train=train, number=1)
-    seat = Seat.objects.create(car=car, number=1)
-    departure = Departure.objects.create(
-        train=train,
-        date="2026-05-01",
-        departure_time="10:00",
-    )
-    passenger = Passenger.objects.create(
-        name="Test",
-        passport_number="0000",
-        gender="male",
-        birth_date="1990-01-01",
-    )
+    train = TrainFactory(route=route)
+    car = CarFactory(train=train)
+    seat = SeatFactory(car=car)
+    departure = DepartureFactory(train=train)
 
     first_seg = route.route_segments.order_by("order").first()
     last_seg = route.route_segments.order_by("order").last()
     assert first_seg is not None
     assert last_seg is not None
 
-    return Booking.objects.create(
-        order=Order.objects.create(),
+    return BookingFactory(
         departure=departure,
         seat=seat,
-        station_from_id=first_seg.connection.station_from_id,
-        station_to_id=last_seg.connection.station_to_id,
-        passenger=passenger,
-        segment_range=make_segment_range(0, route.route_segments.count()),
+        station_from=first_seg.connection.station_from,
+        station_to=last_seg.connection.station_to,
     )
 
 

@@ -245,6 +245,30 @@ wheels = [
 ]
 
 [[package]]
+name = "factory-boy"
+version = "3.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "faker" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/98/75cacae9945f67cfe323829fc2ac451f64517a8a330b572a06a323997065/factory_boy-3.3.3.tar.gz", hash = "sha256:866862d226128dfac7f2b4160287e899daf54f2612778327dd03d0e2cb1e3d03", size = 164146, upload-time = "2025-02-03T09:49:04.433Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/8d/2bc5f5546ff2ccb3f7de06742853483ab75bf74f36a92254702f8baecc79/factory_boy-3.3.3-py2.py3-none-any.whl", hash = "sha256:1c39e3289f7e667c4285433f305f8d506efc2fe9c73aaea4151ebd5cdea394fc", size = 37036, upload-time = "2025-02-03T09:49:01.659Z" },
+]
+
+[[package]]
+name = "faker"
+version = "40.13.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/95/4822ffe94723553789aef783104f4f18fc20d7c4c68e1bbd633e11d09758/faker-40.13.0.tar.gz", hash = "sha256:a0751c84c3abac17327d7bb4c98e8afe70ebf7821e01dd7d0b15cd8856415525", size = 1962043, upload-time = "2026-04-06T16:44:55.68Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/8a/708103325edff16a0b0e004de0d37db8ba216a32713948c64d71f6d4a4c2/faker-40.13.0-py3-none-any.whl", hash = "sha256:c1298fd0d819b3688fb5fd358c4ba8f56c7c8c740b411fd3dbd8e30bf2c05019", size = 1994597, upload-time = "2026-04-06T16:44:53.698Z" },
+]
+
+[[package]]
 name = "filelock"
 version = "3.25.2"
 source = { registry = "https://pypi.org/simple" }
@@ -658,6 +682,7 @@ dev = [
     { name = "django-debug-toolbar" },
     { name = "django-stubs", extra = ["compatible-mypy"] },
     { name = "djangorestframework-stubs", extra = ["compatible-mypy"] },
+    { name = "factory-boy" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "psycopg", extra = ["binary", "pool"] },
@@ -666,6 +691,7 @@ dev = [
     { name = "pytest-django" },
     { name = "pytest-xdist" },
     { name = "ruff" },
+    { name = "types-factory-boy" },
 ]
 
 [package.metadata]
@@ -689,6 +715,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=6.0.2" },
     { name = "djangorestframework-stubs", extras = ["compatible-mypy"], specifier = ">=3.16.9" },
+    { name = "factory-boy", specifier = ">=3.3.3" },
     { name = "mypy", specifier = ">=1.20.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2" },
@@ -697,6 +724,7 @@ dev = [
     { name = "pytest-django", specifier = ">=4.9" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.7" },
+    { name = "types-factory-boy", specifier = ">=0.4.1" },
 ]
 
 [[package]]
@@ -745,6 +773,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/90/76/437d71068094df0726366574cf3432a4ed754217b436eb7429415cf2d480/sqlparse-0.5.5.tar.gz", hash = "sha256:e20d4a9b0b8585fdf63b10d30066c7c94c5d7a7ec47c889a2d83a3caa93ff28e", size = 120815, upload-time = "2025-12-19T07:17:45.073Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/4b/359f28a903c13438ef59ebeee215fb25da53066db67b305c125f1c6d2a25/sqlparse-0.5.5-py3-none-any.whl", hash = "sha256:12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba", size = 46138, upload-time = "2025-12-19T07:17:46.573Z" },
+]
+
+[[package]]
+name = "types-factory-boy"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "factory-boy" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cd/27/5247f2ccdf0f5764ad33fe695499e387e812c009501acbd0a0fa4871a042/types_factory_boy-0.4.1.tar.gz", hash = "sha256:275b9e17a6ad79992bec77b956bb707770f7b0256e4172265e2139e48faf6faf", size = 9552, upload-time = "2023-03-12T19:25:37.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/b9/6ee0008ca399df8209e7c6eee242fb150dff831589ebd12a375d02898545/types_factory_boy-0.4.1-py3-none-any.whl", hash = "sha256:a1fa265fad8b24ddf2d4363227d675d0c4cd44951b71d68ea8fc58aa90b0f85d", size = 12974, upload-time = "2023-03-12T19:25:36.176Z" },
 ]
 
 [[package]]

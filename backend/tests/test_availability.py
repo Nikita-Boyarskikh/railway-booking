@@ -10,12 +10,13 @@ from apps.bookings.services import create_order
 from apps.core.availability import free_seat_ids
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
-from apps.stations.models import Station
-from tests.conftest import create_booking, make_order_item
+from tests.conftest import make_order_item
+from tests.factories import BookingFactory, StationFactory
 
 if TYPE_CHECKING:
     from apps.bookings.models import Passenger
     from apps.routes.models import Route
+    from apps.stations.models import Station
     from apps.trains.models import Car, Departure, Seat
 
 # ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ def test_resolve_station_range_same_station(
 @pytest.mark.django_db
 def test_resolve_station_range_not_on_route(route: Route, db: None) -> None:
     """Station not on the route raises InvalidStationRangeError"""
-    orphan = Station.objects.create(name="Orphan", code="ORP")
+    orphan = StationFactory()
     with pytest.raises(InvalidStationRangeError):
         resolve_station_range(route, orphan.pk, orphan.pk)
 
@@ -100,7 +101,13 @@ def test_free_seat_ids_adjacent_non_overlapping(
     passenger: Passenger,
 ) -> None:
     """Seat booked A->B is free for B->C (adjacent, non-overlapping)."""
-    create_booking(departure, seat, station_a, station_b, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_b,
+        passenger=passenger,
+    )
     # Query for B->C (orders 1..2)
     free = free_seat_ids(departure, 1, 2)
     assert seat.pk in free
@@ -117,7 +124,13 @@ def test_free_seat_ids_exact_overlap(
     passenger: Passenger,
 ) -> None:
     """Seat booked A->C is occupied for A->C (exact overlap)."""
-    create_booking(departure, seat, station_a, station_c, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_c,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 0, 2)
     assert seat.pk not in free
     assert seat2.pk in free
@@ -133,7 +146,13 @@ def test_free_seat_ids_partial_overlap(
     passenger: Passenger,
 ) -> None:
     """Seat booked A->C is occupied for B->D (partial overlap at B->C)."""
-    create_booking(departure, seat, station_a, station_c, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_c,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 1, 3)
     assert seat.pk not in free
     assert seat2.pk in free
@@ -149,8 +168,20 @@ def test_free_seat_ids_multiple_bookings_different_seats(
     passenger: Passenger,
 ) -> None:
     """Both seats booked on overlapping segments — none free."""
-    create_booking(departure, seat, station_a, station_d, passenger)
-    create_booking(departure, seat2, station_a, station_d, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_d,
+        passenger=passenger,
+    )
+    BookingFactory(
+        departure=departure,
+        seat=seat2,
+        station_from=station_a,
+        station_to=station_d,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 0, 3)
     assert free == set()
 
@@ -167,7 +198,13 @@ def test_free_seat_ids_contained_overlap(
     passenger: Passenger,
 ) -> None:
     """Seat booked A→D is occupied for B→C (request contained in booking)."""
-    create_booking(departure, seat, station_a, station_d, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_d,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 1, 2)  # B→C inside A→D
     assert seat.pk not in free
     assert seat2.pk in free
@@ -183,7 +220,13 @@ def test_free_seat_ids_enclosing_overlap(
     passenger: Passenger,
 ) -> None:
     """Seat booked B→C is occupied for A→D (booking contained in request)."""
-    create_booking(departure, seat, station_b, station_c, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_b,
+        station_to=station_c,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 0, 3)  # A→D encloses B→C
     assert seat.pk not in free
     assert seat2.pk in free
@@ -200,8 +243,20 @@ def test_free_seat_ids_multiple_non_overlapping_same_seat(
     passenger: Passenger,
 ) -> None:
     """Same seat booked A→B and C→D leaves B→C free."""
-    create_booking(departure, seat, station_a, station_b, passenger)
-    create_booking(departure, seat, station_c, station_d, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_b,
+        passenger=passenger,
+    )
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_c,
+        station_to=station_d,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 1, 2)  # B→C
     assert seat.pk in free
 
@@ -216,8 +271,20 @@ def test_free_seat_ids_fully_covered_by_multiple_bookings(
     passenger: Passenger,
 ) -> None:
     """Seat booked A→B and B→D: occupied for A→D (union covers request)."""
-    create_booking(departure, seat, station_a, station_b, passenger)
-    create_booking(departure, seat, station_b, station_d, passenger)
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_a,
+        station_to=station_b,
+        passenger=passenger,
+    )
+    BookingFactory(
+        departure=departure,
+        seat=seat,
+        station_from=station_b,
+        station_to=station_d,
+        passenger=passenger,
+    )
     free = free_seat_ids(departure, 0, 3)  # A→D
     assert seat.pk not in free
 

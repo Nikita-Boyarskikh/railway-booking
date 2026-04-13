@@ -1,9 +1,14 @@
 """Tests for admin custom logic — ``_bulk_create_seats``."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from apps.trains.admin import _bulk_create_seats
-from apps.trains.models import Car, Seat
+from tests.factories import SeatFactory
+
+if TYPE_CHECKING:
+    from apps.trains.models import Car
 
 
 @pytest.mark.django_db
@@ -17,8 +22,8 @@ def test_bulk_create_seats_creates_correct_numbers(car: Car) -> None:
 @pytest.mark.django_db
 def test_bulk_create_seats_skips_existing(car: Car) -> None:
     """Pre-existing seat numbers are not duplicated."""
-    Seat.objects.create(car=car, number=2)
-    Seat.objects.create(car=car, number=4)
+    SeatFactory(car=car, number=2)
+    SeatFactory(car=car, number=4)
 
     _bulk_create_seats(car, 5)
 

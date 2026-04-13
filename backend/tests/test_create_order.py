@@ -11,10 +11,11 @@ from apps.bookings.models import Booking, Order, Passenger
 from apps.bookings.services import create_order
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
-from apps.stations.models import Station
 from tests.conftest import make_order_item
+from tests.factories import StationFactory
 
 if TYPE_CHECKING:
+    from apps.stations.models import Station
     from apps.trains.models import Car, Departure, Seat
 
 # ---------------------------------------------------------------------------
@@ -111,8 +112,8 @@ def test_create_order_station_not_on_route(
     passenger: Passenger,
 ) -> None:
     """Stations exist but are not part of the train's route."""
-    Station.objects.create(name="X", code="X")
-    Station.objects.create(name="Y", code="Y")
+    StationFactory(code="X")
+    StationFactory(code="Y")
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(InvalidStationRangeError):
         create_order(departure.uuid, "X", "Y", [item], Money(1000, "USD"))

@@ -7,7 +7,7 @@ stations endpoint) so that a regression to N+1 queries — from breaking a
 per-row lookup — fails loudly instead of silently eating CPU in prod.
 """
 
-from datetime import date, time
+from datetime import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,18 +16,18 @@ from django.core.cache import caches
 from djmoney.money import Money
 from rest_framework.test import APIClient
 
-from apps.bookings.models import Booking, Order, Passenger
 from apps.bookings.services import create_order
-from apps.core.availability import free_seat_ids, make_segment_range
+from apps.core.availability import free_seat_ids
 from apps.core.timetable import compute_timetable
-from apps.routes.services import resolve_station_range
 from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import list_seats, search_departures
 from tests.conftest import create_order_payload, make_order_item
+from tests.factories import BookingFactory, DepartureFactory, OrderFactory
 
 if TYPE_CHECKING:
     from pytest_django import DjangoAssertNumQueries
 
+    from apps.bookings.models import Passenger
     from apps.stations.models import Station
 
 
@@ -60,47 +60,15 @@ def test_search_departures_query_count_constant_in_bookings(
     assert results_empty
     assert results_empty[0]["free_seat_count"] == 2
 
-    # Create N bookings on various (seat, segment) combinations. We only have
-    # two seats in the fixture, so alternate seats and segments to spread the
-    # load while keeping every pair non-overlapping enough to succeed.
-    order = Order.objects.create()
-    seats = [seat, seat2]
+    order = OrderFactory()
     ranges = [(station_a, station_b), (station_b, station_c), (station_c, station_d)]
-
-    route = departure.train.route
-    created = 0
-    for i in range(10):
-        s_obj = seats[i % 2]
-        station_from, station_to = ranges[i % 3]
-        # Skip duplicates (same seat+range combo) to avoid unique conflicts.
-        if Booking.objects.filter(
-            departure=departure,
-            seat=s_obj,
-            station_from=station_from,
-            station_to=station_to,
-        ).exists():
-            continue
-        from_order, to_order = resolve_station_range(route, station_from.pk, station_to.pk)
-        route_segment_exists = from_order is not None and to_order is not None
-        assert route_segment_exists, "test fixture requested an impossible route segment"
-        passenger = Passenger.objects.create(
-            name=f"P{i}",
-            passport_number=f"P{i:05d}",
-            gender="male",
-            birth_date=date.fromisoformat("1990-01-01"),
-        )
-        Booking.objects.create(
+    for station_from, station_to in ranges:
+        BookingFactory(
             order=order,
             departure=departure,
-            seat=s_obj,
             station_from=station_from,
             station_to=station_to,
-            passenger=passenger,
-            segment_range=make_segment_range(from_order, to_order),
         )
-        created += 1
-
-    assert created > 0
 
     # With many bookings, the query count must stay under the same ceiling.
     _clear_all_caches()
@@ -172,11 +140,7 @@ def test_search_departures_query_count_constant_in_departures(
     # Add four more departures sharing the same train, same date.
     hours = (12, 14, 16, 18)
     for hour in hours:
-        Departure.objects.create(
-            train=train,
-            date=departure.date,
-            departure_time=time(hour, 0),
-        )
+        DepartureFactory(train=train, date=departure.date, departure_time=time(hour, 0))
 
     _clear_all_caches()
     # number of departures does not affect number of queries

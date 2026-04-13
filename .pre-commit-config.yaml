@@ -13,15 +13,23 @@ repos:
       - id: mypy
         pass_filenames: false
         files: "^backend/"
-        entry: bash -c 'cd backend && mypy .'
+        entry: bash -c 'cd backend && mypy --show-traceback .'
         additional_dependencies:
           - django
-          - djangorestframework
-          - psycopg
           - django-constance
-          - redis
+          - django-cors-headers
+          - django-debug-toolbar
+          - django-health-check
           - django-money
           - django-stubs
+          - django-stubs-ext
+          - djangorestframework
           - djangorestframework-stubs
+          - factory-boy
+          - psycopg
           - pytest
           - pytest-django
+          - python-dotenv
+          - redis
+          - types-factory-boy
+          - whitenoise

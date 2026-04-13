@@ -10,13 +10,14 @@ from apps.bookings.services import create_order
 from apps.core.types import SeatStatus
 from apps.routes.exceptions import InvalidStationRangeError
 from apps.stations.exceptions import InvalidStationCodeError
-from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import list_seats
 from tests.conftest import make_order_item
+from tests.factories import CarFactory, SeatFactory
 
 if TYPE_CHECKING:
     from apps.bookings.models import Passenger
     from apps.stations.models import Station
+    from apps.trains.models import Car, Departure, Seat, Train
 
 
 @pytest.mark.django_db
@@ -46,11 +47,11 @@ def test_list_seats_groups_by_car(
     departure: Departure,
 ) -> None:
     """Multiple cars appear as separate entries in the response."""
-    car1 = Car.objects.create(train=train, number=1)
-    Seat.objects.create(car=car1, number=1)
-    car2 = Car.objects.create(train=train, number=2)
-    Seat.objects.create(car=car2, number=1)
-    Seat.objects.create(car=car2, number=2)
+    car1 = CarFactory(train=train, number=1)
+    SeatFactory(car=car1, number=1)
+    car2 = CarFactory(train=train, number=2)
+    SeatFactory(car=car2, number=1)
+    SeatFactory(car=car2, number=2)
 
     result = list_seats(departure.uuid, station_a.code, station_d.code)
     assert len(result["cars"]) == 2
@@ -93,8 +94,8 @@ def test_list_seats_price_reflects_car_factor(
     departure: Departure,
 ) -> None:
     """A car with price_factor=1.5 produces higher seat prices."""
-    expensive_car = Car.objects.create(train=train, number=10, price_factor=Decimal("1.5"))
-    Seat.objects.create(car=expensive_car, number=1)
+    expensive_car = CarFactory(train=train, number=10, price_factor=Decimal("1.5"))
+    SeatFactory(car=expensive_car, number=1, price_factor=Decimal("1.0"))
 
     result = list_seats(departure.uuid, station_a.code, station_d.code)
     car_out = next(c for c in result["cars"] if c["number"] == 10)

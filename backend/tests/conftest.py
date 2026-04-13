@@ -18,16 +18,26 @@ from constance.test import override_config
 from django.core.cache import caches
 from djmoney.money import Money
 
-from apps.bookings.models import Booking, Order, Passenger
-from apps.core.availability import make_segment_range
 from apps.core.types import OrderDict, OrderItemInput, PassengerDict
-from apps.routes.models import Route, RouteSegment
-from apps.routes.services import resolve_station_range
-from apps.stations.models import Connection, Station
-from apps.trains.models import Car, Departure, Seat, Train
+from tests.factories import (
+    CarFactory,
+    ConnectionFactory,
+    DepartureFactory,
+    PassengerFactory,
+    RouteFactory,
+    RouteSegmentFactory,
+    SeatFactory,
+    StationFactory,
+    TrainFactory,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from apps.bookings.models import Passenger
+    from apps.routes.models import Route
+    from apps.stations.models import Connection, Station
+    from apps.trains.models import Car, Departure, Seat, Train
 
 # ---------------------------------------------------------------------------
 # Autouse: prevent process-level cache leaks between tests
@@ -63,22 +73,22 @@ def base_price() -> Generator[None]:
 
 @pytest.fixture
 def station_a(db: None) -> Station:
-    return Station.objects.create(name="A", code="A")
+    return StationFactory(name="A", code="A")
 
 
 @pytest.fixture
 def station_b(db: None) -> Station:
-    return Station.objects.create(name="B", code="B")
+    return StationFactory(name="B", code="B")
 
 
 @pytest.fixture
 def station_c(db: None) -> Station:
-    return Station.objects.create(name="C", code="C")
+    return StationFactory(name="C", code="C")
 
 
 @pytest.fixture
 def station_d(db: None) -> Station:
-    return Station.objects.create(name="D", code="D")
+    return StationFactory(name="D", code="D")
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +98,7 @@ def station_d(db: None) -> Station:
 
 @pytest.fixture
 def connection_ab(station_a: Station, station_b: Station) -> Connection:
-    return Connection.objects.create(
+    return ConnectionFactory(
         station_from=station_a,
         station_to=station_b,
         distance_km=100,
@@ -98,7 +108,7 @@ def connection_ab(station_a: Station, station_b: Station) -> Connection:
 
 @pytest.fixture
 def connection_bc(station_b: Station, station_c: Station) -> Connection:
-    return Connection.objects.create(
+    return ConnectionFactory(
         station_from=station_b,
         station_to=station_c,
         distance_km=200,
@@ -108,7 +118,7 @@ def connection_bc(station_b: Station, station_c: Station) -> Connection:
 
 @pytest.fixture
 def connection_cd(station_c: Station, station_d: Station) -> Connection:
-    return Connection.objects.create(
+    return ConnectionFactory(
         station_from=station_c,
         station_to=station_d,
         distance_km=300,
@@ -127,16 +137,10 @@ def route(
     connection_bc: Connection,
     connection_cd: Connection,
 ) -> Route:
-    r = Route.objects.create(name="A-D")
-    RouteSegment.objects.create(
-        route=r, connection=connection_ab, order=0, stop_duration=timedelta(0)
-    )
-    RouteSegment.objects.create(
-        route=r, connection=connection_bc, order=1, stop_duration=timedelta(0)
-    )
-    RouteSegment.objects.create(
-        route=r, connection=connection_cd, order=2, stop_duration=timedelta(0)
-    )
+    r = RouteFactory(name="A-D", price_factor=Decimal("1.0"))
+    RouteSegmentFactory(route=r, connection=connection_ab, order=0, stop_duration=timedelta(0))
+    RouteSegmentFactory(route=r, connection=connection_bc, order=1, stop_duration=timedelta(0))
+    RouteSegmentFactory(route=r, connection=connection_cd, order=2, stop_duration=timedelta(0))
     return r
 
 
@@ -147,22 +151,28 @@ def route(
 
 @pytest.fixture
 def train(route: Route) -> Train:
-    return Train.objects.create(route=route, number="100", name="T", avg_speed_kmh=100)
+    return TrainFactory(
+        route=route,
+        number="100",
+        name="T",
+        avg_speed_kmh=100,
+        price_factor=Decimal("1.0"),
+    )
 
 
 @pytest.fixture
 def car(train: Train) -> Car:
-    return Car.objects.create(train=train, number=1)
+    return CarFactory(train=train, number=1, price_factor=Decimal("1.0"))
 
 
 @pytest.fixture
 def seat(car: Car) -> Seat:
-    return Seat.objects.create(car=car, number=1)
+    return SeatFactory(car=car, number=1, price_factor=Decimal("1.0"))
 
 
 @pytest.fixture
 def seat2(car: Car) -> Seat:
-    return Seat.objects.create(car=car, number=2)
+    return SeatFactory(car=car, number=2, price_factor=Decimal("1.0"))
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +182,7 @@ def seat2(car: Car) -> Seat:
 
 @pytest.fixture
 def departure(train: Train) -> Departure:
-    return Departure.objects.create(
+    return DepartureFactory(
         train=train,
         date=date.fromisoformat("2026-05-01"),
         departure_time=time.fromisoformat("10:00"),
@@ -181,20 +191,24 @@ def departure(train: Train) -> Departure:
 
 @pytest.fixture
 def backward_departure(route: Route, station_b: Station, station_a: Station) -> Departure:
-    backward_route = Route.objects.create(name="B-A")
-    connection_ba = Connection.objects.create(
+    connection_ba = ConnectionFactory(
         station_from=station_b,
         station_to=station_a,
         distance_km=100,
         base_price=Money(400, "USD"),
     )
-    RouteSegment.objects.create(
+    backward_route = RouteFactory(name="B-A", price_factor=Decimal("1.0"))
+    RouteSegmentFactory(
         route=backward_route, connection=connection_ba, order=0, stop_duration=timedelta(0)
     )
-    backward_train = Train.objects.create(
-        route=backward_route, number="200", name="Backward", avg_speed_kmh=100
+    backward_train = TrainFactory(
+        route=backward_route,
+        number="200",
+        name="Backward",
+        avg_speed_kmh=100,
+        price_factor=Decimal("1.0"),
     )
-    return Departure.objects.create(
+    return DepartureFactory(
         train=backward_train,
         date=date.fromisoformat("2026-05-01"),
         departure_time=time.fromisoformat("12:00"),
@@ -208,12 +222,7 @@ def backward_departure(route: Route, station_b: Station, station_a: Station) -> 
 
 @pytest.fixture
 def passenger(db: None) -> Passenger:
-    return Passenger.objects.create(
-        name="John Johns",
-        gender="male",
-        passport_number="1234567890",
-        birth_date=date(1990, 1, 1),
-    )
+    return PassengerFactory(name="John Johns", passport_number="1234567890")
 
 
 # ---------------------------------------------------------------------------
@@ -232,31 +241,6 @@ def make_order_item(car_number: int, seat_number: int, passenger: Passenger) -> 
             gender=passenger.gender,
             birth_date=passenger.birth_date,
         ),
-    )
-
-
-def create_booking(
-    departure: Departure,
-    seat: Seat,
-    station_from: Station,
-    station_to: Station,
-    passenger: Passenger,
-) -> None:
-    """Create a minimal Booking for testing (bypasses service layer)."""
-    order = Order.objects.create()
-    from_order, to_order = resolve_station_range(
-        departure.train.route, station_from.pk, station_to.pk
-    )
-    route_segment_exists = from_order is not None and to_order is not None
-    assert route_segment_exists, "test fixture requested an impossible route segment"
-    Booking.objects.create(
-        order=order,
-        departure=departure,
-        seat=seat,
-        station_from=station_from,
-        station_to=station_to,
-        passenger=passenger,
-        segment_range=make_segment_range(from_order, to_order),
     )
 
 
