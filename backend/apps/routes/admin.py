@@ -1,3 +1,4 @@
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 from django.contrib import admin
@@ -5,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, ModelForm
 from django.utils.translation import gettext_lazy as _
 
+from apps.bookings.models import Booking
 from apps.routes.models import Route, RouteSegment
 
 if TYPE_CHECKING:
@@ -36,24 +38,26 @@ class RouteSegmentFormSet(BaseInlineFormSet[RouteSegment, Route, ModelForm[Route
         actual_orders = [s[0] for s in segments]
         if actual_orders != expected_orders:
             raise ValidationError(
-                _("Segment orders must be sequential starting from 0 "
-                f"(expected {expected_orders}, got {actual_orders}).")
+                _(
+                    "Segment orders must be sequential starting from 0 "
+                    f"(expected {expected_orders}, got {actual_orders})."
+                )
             )
 
         # Check chain continuity: each segment's station_from must match
         # the previous segment's station_to.
-        for prev_segment, next_segment in zip(segments, segments[1:], strict=False):
+        for prev_segment, next_segment in pairwise(segments):
             if prev_segment[2] != next_segment[1]:
                 raise ValidationError(
-                    _(f"Segment #{next_segment[0]} start station does not match "
-                    f"segment #{prev_segment[0]} end station — route is not continuous.")
+                    _(
+                        f"Segment #{next_segment[0]} start station does not match "
+                        f"segment #{prev_segment[0]} end station — route is not continuous."
+                    )
                 )
 
 
 def _route_has_bookings(route: Route) -> bool:
     """Check if any departure on this route has bookings."""
-    from apps.bookings.models import Booking
-
     return Booking.objects.filter(departure__train__route=route).exists()
 
 
@@ -70,7 +74,7 @@ class RouteSegmentInline(admin.TabularInline[RouteSegment, Route]):
             return False
         return super().has_add_permission(request, obj)
 
-    def has_change_permission(self, request: HttpRequest, obj: Route | None = None) -> bool:   # type: ignore[override]
+    def has_change_permission(self, request: HttpRequest, obj: Route | None = None) -> bool:  # type: ignore[override]
         if self._is_readonly(obj):
             return False
         return super().has_change_permission(request, obj)

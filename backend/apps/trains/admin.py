@@ -53,8 +53,7 @@ def _bulk_create_seats(car: Car, n: int) -> None:
     if n <= 0:
         return
     existing = set(car.seats.values_list("number", flat=True))
-    new_seats = [Seat(car=car, number=i) for i in range(1, n + 1) if i not in existing]
-    if new_seats:
+    if new_seats := [Seat(car=car, number=i) for i in range(1, n + 1) if i not in existing]:
         Seat.objects.bulk_create(new_seats, ignore_conflicts=True)
 
 

@@ -103,6 +103,10 @@ class Booking(models.Model):
 
     def clean(self) -> None:
         """Cross-field integrity checks."""
+        from apps.core.availability import make_segment_range
+        from apps.routes.exceptions import InvalidStationRangeError
+        from apps.routes.services import resolve_station_range
+
         errors: dict[str, list[ValidationError]] = {}
 
         # All FK ids must be set before we can cross-check.
@@ -120,9 +124,6 @@ class Booking(models.Model):
 
         # 2-4. Both stations must be on the route, in the correct direction.
         #      Also auto-compute segment_range from the station positions.
-        from apps.routes.exceptions import InvalidStationRangeError
-        from apps.routes.services import resolve_station_range
-
         route = self.departure.train.route
         try:
             from_order, to_order = resolve_station_range(
@@ -137,8 +138,6 @@ class Booking(models.Model):
             )
         else:
             # 5. Auto-fill segment_range so admin users don't have to.
-            from apps.core.availability import make_segment_range
-
             self.segment_range = make_segment_range(from_order, to_order)
 
         if errors:

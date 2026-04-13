@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -25,7 +26,7 @@ class DepartureSearchView(APIView):
             departures = search_departures(data["from_code"], data["to_code"], data["date"])
             return Response(departures)
         except InvalidStationCodeError as e:
-            return Response({"detail": str(e)}, status=400)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DepartureSeatsView(APIView):
@@ -39,6 +40,6 @@ class DepartureSeatsView(APIView):
         try:
             return Response(list_seats(uuid, data["from_code"], data["to_code"]))
         except DepartureNotFoundError as e:
-            return Response({"detail": str(e)}, status=404)
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except (InvalidStationCodeError, InvalidStationRangeError) as e:
-            return Response({"detail": str(e)}, status=400)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

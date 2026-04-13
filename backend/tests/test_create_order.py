@@ -68,11 +68,7 @@ def test_create_order_with_duplicated_items(
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(SeatUnavailableError):
         create_order(
-            departure.uuid,
-            station_a.code,
-            station_b.code,
-            [item, item],
-            Money(600, "USD")
+            departure.uuid, station_a.code, station_b.code, [item, item], Money(600, "USD")
         )
 
 

@@ -25,10 +25,8 @@ def resolve_station_codes(from_code: str, to_code: str) -> tuple[Station, Statio
         InvalidStationCodeError: If either code does not match a known station.
     """
     stations = {s.code: s for s in Station.objects.filter(code__in=[from_code, to_code])}
-    from_station = stations.get(from_code)
-    to_station = stations.get(to_code)
-    if not from_station:
+    if not (from_station := stations.get(from_code)):
         raise InvalidStationCodeError(from_code)
-    if not to_station:
+    if not (to_station := stations.get(to_code)):
         raise InvalidStationCodeError(to_code)
     return from_station, to_station

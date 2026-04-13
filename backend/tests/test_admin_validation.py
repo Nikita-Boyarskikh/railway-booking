@@ -1,16 +1,34 @@
 """Tests for admin-level model validation: RouteSegmentFormSet and Booking.clean()."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory
 from djmoney.money import Money
 
 from apps.bookings.models import Booking, Order, Passenger
-from apps.routes.admin import RouteAdmin, RouteSegmentFormSet, RouteSegmentInline
+from apps.core.availability import make_segment_range
+from apps.routes.admin import RouteSegmentFormSet, RouteSegmentInline
 from apps.routes.models import Route, RouteSegment
 from apps.stations.models import Connection, Station
 from apps.trains.models import Car, Departure, Seat, Train
+
+if TYPE_CHECKING:
+    from django.forms import BaseInlineFormSet, ModelForm
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def admin_user(db: None) -> User:
+    return User.objects.create_superuser("admin", "admin@test.com", "password")
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -52,7 +70,18 @@ def _make_formset_data(
 
 def _validate_formset(route: Route, data: dict[str, str]) -> list[str]:
     """Run RouteSegmentFormSet validation and return non-form errors as strings."""
-    formset = RouteSegmentFormSet(data, instance=route, prefix="route_segments")
+    from django.forms import inlineformset_factory
+
+    FormSet: type[BaseInlineFormSet[RouteSegment, Route, ModelForm[RouteSegment]]] = (  # noqa: N806
+        inlineformset_factory(
+            Route,
+            RouteSegment,
+            formset=RouteSegmentFormSet,
+            fields=("connection", "order", "stop_duration"),
+            extra=0,
+        )
+    )
+    formset = FormSet(data, instance=route, prefix="route_segments")
     formset.full_clean()
     if formset.is_valid():
         return []
@@ -482,7 +511,6 @@ def _create_booking_for_route(route: Route) -> Booking:
         gender="male",
         birth_date="1990-01-01",
     )
-    from apps.core.availability import make_segment_range
 
     first_seg = route.route_segments.order_by("order").first()
     last_seg = route.route_segments.order_by("order").last()
@@ -502,8 +530,7 @@ def _create_booking_for_route(route: Route) -> Booking:
 
 @pytest.fixture
 def segment_inline() -> RouteSegmentInline:
-    route_admin = RouteAdmin(Route, admin.site)
-    return RouteSegmentInline(Route, route_admin)  # type: ignore[arg-type]
+    return RouteSegmentInline(Route, admin.site)
 
 
 @pytest.mark.django_db
@@ -523,9 +550,11 @@ def test_inline_readonly_when_bookings_exist(
 def test_inline_allows_all_without_bookings(
     route: Route,
     segment_inline: RouteSegmentInline,
+    admin_user: User,
 ) -> None:
     """All permissions granted when no bookings on the route."""
     request = RequestFactory().get("/admin/")
+    request.user = admin_user
     assert segment_inline.has_add_permission(request, route) is True
     assert segment_inline.has_change_permission(request, route) is True
     assert segment_inline.has_delete_permission(request, route) is True
@@ -534,9 +563,11 @@ def test_inline_allows_all_without_bookings(
 @pytest.mark.django_db
 def test_inline_allows_all_for_new_route(
     segment_inline: RouteSegmentInline,
+    admin_user: User,
 ) -> None:
     """Permissions granted for a new (unsaved) route."""
     request = RequestFactory().get("/admin/")
+    request.user = admin_user
     assert segment_inline.has_add_permission(request, None) is True
     assert segment_inline.has_change_permission(request, None) is True
     assert segment_inline.has_delete_permission(request, None) is True

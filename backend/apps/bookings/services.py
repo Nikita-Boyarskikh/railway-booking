@@ -17,7 +17,6 @@ from apps.bookings.exceptions import (
 from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 from apps.core.availability import make_segment_range
 from apps.core.cache import DepartureGenerationCache
-from apps.core.db_utils import populate_prefetched_objects_cache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
@@ -108,36 +107,46 @@ def create_order(
 
     order = Order.objects.create(total_price=total)
 
-    bookings: list[Booking] = []
-    for item, seat in resolved:
-        passenger_data = item["passenger"]
-        passenger = Passenger.objects.create(
-            name=passenger_data["name"],
-            passport_number=passenger_data["passport_number"],
-            gender=passenger_data["gender"],
-            birth_date=passenger_data["birth_date"],
-        )
-
-        try:
-            booking = Booking.objects.create(
-                order=order,
-                departure=departure,
-                seat=seat,
-                station_from=station_from,
-                station_to=station_to,
-                passenger=passenger,
-                segment_range=trip_range,
+    passengers = Passenger.objects.bulk_create(
+        [
+            Passenger(
+                name=item["passenger"]["name"],
+                passport_number=item["passenger"]["passport_number"],
+                gender=item["passenger"]["gender"],
+                birth_date=item["passenger"]["birth_date"],
             )
-        except IntegrityError as e:
-            if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e):  # pragma: no cover
-                raise  # should never happen if the DB schema is correct
-            raise SeatUnavailableError(seat.car.number, seat.number) from e
-        bookings.append(booking)
+            for item, _seat in resolved
+        ]
+    )
 
-    # Populate prefetch cache so the caller can serialize without extra queries.
-    # All FK objects (departure, seat.car, station_from, station_to, passenger)
-    # are already loaded in memory from the creation above.
-    populate_prefetched_objects_cache(order, "bookings", bookings)
+    try:
+        bookings = Booking.objects.bulk_create(
+            [
+                Booking(
+                    order=order,
+                    departure=departure,
+                    seat=seat,
+                    station_from=station_from,
+                    station_to=station_to,
+                    passenger=passenger,
+                    segment_range=trip_range,
+                )
+                for (_item, seat), passenger in zip(resolved, passengers, strict=True)
+            ]
+        )
+    except IntegrityError as e:
+        if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e):  # pragma: no cover
+            raise
+        raise SeatUnavailableError() from e
+
+    # Populate the prefetch cache so OrderSerializer can access
+    # order.bookings without an extra query.  We store a QuerySet with its
+    # result cache pre-filled — the same technique Django uses internally in
+    # prefetch_related_objects — so .all(), .count(), iteration all work
+    # without hitting the DB.
+    bookings_qs = Booking.objects.filter(order=order)
+    bookings_qs._result_cache = list(bookings)
+    order._prefetched_objects_cache = {"bookings": bookings_qs}  # type: ignore[attr-defined]
 
     transaction.on_commit(lambda: DepartureGenerationCache.incr(departure.uuid))
 

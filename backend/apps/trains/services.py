@@ -10,20 +10,18 @@ from constance import config
 from django.conf import settings
 from djmoney.money import Money
 
-from apps.core.availability import free_seat_ids
 from apps.bookings.exceptions import DepartureNotFoundError
+from apps.core.availability import batch_occupied_seat_ids_with_subtotal, free_seat_ids
 from apps.core.cache import SearchCache, SeatsCache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
 from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse, SeatStatus
-from apps.routes.exceptions import InvalidStationRangeError
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
 
 if TYPE_CHECKING:
     import datetime
-    from functools import cache
     from uuid import UUID
 
     from django.db.models import QuerySet
@@ -44,25 +42,40 @@ def search_departures(
     """
     Return departure summaries serving ``from_code``→``to_code`` on a date.
 
+    Departures whose route does not pass through both stations are excluded
+    at the SQL level so we never load irrelevant rows. Occupied-seat
+    lookups are batched into a single query across all matching departures.
+
     Raises:
         InvalidStationCodeError: On unknown references or route mismatch.
     """
     from_station, to_station = resolve_station_codes(from_code, to_code)
+    # Two separate .filter() calls so each condition can match a *different*
+    # route segment — a single .filter() would require one segment to have
+    # both station_from=A and station_to=D (only a direct connection).
+    departures = list(
+        _select_related_for_departure_qs(
+            Departure.objects.filter(
+                date=on_date,
+                train__route__route_segments__connection__station_from=from_station,
+            )
+            .filter(train__route__route_segments__connection__station_to=to_station)
+            .distinct()
+        )
+    )
+    if not departures:
+        return []
 
-    # Multiple departures share a route, so cache the (route, from, to) subtotal
-    # across the loop rather than recomputing it per departure.
-    # The free seat IDs are also cached per departure and station range.
-    get_segment_range_subtotal = cache(calc_segment_range_subtotal)
-    base_price = Money(config.BASE_PRICE, DEFAULT_CURRENCY)
+    occupied_with_subtotal_by_departure = batch_occupied_seat_ids_with_subtotal(
+        departures, from_station.pk, to_station.pk
+    )
+    base_price = Money(config.BASE_PRICE, settings.DEFAULT_CURRENCY)
 
     results: list[DepartureSummary] = []
-    for departure in _select_related_for_departure_qs(Departure.objects.filter(date=on_date)):
-        route = departure.train.route
-
-        try:
-            from_order, to_order = resolve_station_range(route, from_station.pk, to_station.pk)
-        except InvalidStationRangeError:
+    for departure in departures:
+        if (occupied := occupied_with_subtotal_by_departure.get(departure.pk)) is None:
             continue
+        occupied_seats, subtotal = occupied
 
         timetable = compute_timetable(departure)
         dep_at_a = next(
@@ -72,10 +85,9 @@ def search_departures(
             (s["arrival_time"] for s in timetable if s["station_id"] == to_station.pk), None
         )
 
-        free_ids = free_seat_ids(departure, from_order, to_order)
-        free_count = len(free_ids)
-
-        subtotal = get_segment_range_subtotal(route, from_order, to_order)
+        # All seats for this departure (already prefetched).
+        all_seat_ids = {seat.pk for car in departure.train.cars.all() for seat in car.seats.all()}
+        free_ids = all_seat_ids - occupied_seats
 
         min_price: Money | None = None
         for car in departure.train.cars.all():
@@ -93,7 +105,7 @@ def search_departures(
                 "train_name": departure.train.name,
                 "departure_time": dep_at_a,
                 "arrival_time": arr_at_b,
-                "free_seat_count": free_count,
+                "free_seat_count": len(free_ids),
                 "min_price": str(min_price) if min_price is not None else None,
             }
         )

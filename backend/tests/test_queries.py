@@ -23,7 +23,7 @@ from apps.core.timetable import compute_timetable
 from apps.routes.services import resolve_station_range
 from apps.trains.models import Car, Departure, Seat, Train
 from apps.trains.services import list_seats, search_departures
-from tests.conftest import make_order_item
+from tests.conftest import create_order_payload, make_order_item
 
 if TYPE_CHECKING:
     from pytest_django import DjangoAssertNumQueries
@@ -149,6 +149,7 @@ def test_search_departures_query_count_constant_in_departures(
     seat: Seat,
     seat2: Seat,
     departure: Departure,
+    django_assert_num_queries: DjangoAssertNumQueries,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """Adding more departures on the same route must not add per-departure
@@ -178,7 +179,8 @@ def test_search_departures_query_count_constant_in_departures(
         )
 
     _clear_all_caches()
-    with django_assert_max_num_queries(baseline + len(hours)):
+    # number of departures does not affect number of queries
+    with django_assert_num_queries(baseline):
         scaled_results = search_departures(station_a.code, station_d.code, departure.date)
     assert len(scaled_results) == 5
 
@@ -327,6 +329,42 @@ def test_compute_timetable_without_prefetch_one_query(
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("base_price")
+def test_create_order_by_api_without_extra_query(
+    station_a: Station,
+    station_d: Station,
+    car: Car,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
+    passenger: Passenger,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    api_client = APIClient()
+
+    # same as plane call
+    with django_assert_max_num_queries(11):
+        r = api_client.post(
+            f"/api/v{settings.API_VERSION}/orders/",
+            create_order_payload(
+                departure,
+                station_a,
+                station_d,
+                items=[
+                    make_order_item(
+                        car_number=car.number,
+                        seat_number=seat.number,
+                        passenger=passenger,
+                    ),
+                ],
+                expected_total_price=1000,
+            ),
+            format="json",
+        )
+    assert r.status_code == 201, r.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
 def test_create_order_query_count_bounded(
     station_a: Station,
     station_b: Station,
@@ -337,6 +375,7 @@ def test_create_order_query_count_bounded(
     departure: Departure,
     passenger: Passenger,
     django_assert_max_num_queries: DjangoAssertNumQueries,
+    django_assert_num_queries: DjangoAssertNumQueries,
 ) -> None:
     """``create_order`` issues a bounded number of queries that grows
     linearly with the number of items (one seat lookup + one passenger
@@ -359,7 +398,7 @@ def test_create_order_query_count_bounded(
     # Two-item order on the remaining free seats (B->D avoids the overlap
     # since the first call already took seat A->B).
     _clear_all_caches()
-    with django_assert_max_num_queries(single_item + 3):
+    with django_assert_num_queries(single_item + 1):
         create_order(
             departure.uuid,
             station_b.code,
