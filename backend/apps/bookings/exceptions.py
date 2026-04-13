@@ -13,15 +13,16 @@ class DepartureNotFoundError(RailwayBookingError):
 class SeatUnavailableError(RailwayBookingError):
     """Raised when a requested seat does not found on given train."""
 
-    def __init__(self, car_number: int, seat_number: int) -> None:
-        super().__init__(
-            _("Seat car={car_number} seat={seat_number} no longer available").format(
-                seat_number=seat_number,
-                car_number=car_number,
-            )
-        )
-        self.car_number = car_number
-        self.seat_number = seat_number
+    def __init__(self) -> None:
+        super().__init__(_("One of requested seats is no longer available"))
+
+
+class PriceChangedError(RailwayBookingError):
+    """Raised when the actual total price differs from the client's expected price."""
+
+    def __init__(self, actual_total: str) -> None:
+        self.actual_total = actual_total
+        super().__init__(_("Price has changed since you last viewed it"))
 
 
 class SeatNotFoundError(RailwayBookingError):

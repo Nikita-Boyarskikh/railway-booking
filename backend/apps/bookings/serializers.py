@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -53,10 +54,13 @@ class CreateOrderSerializer(serializers.Serializer[None]):
     station_from_code = serializers.CharField(max_length=station_code_max_length)
     station_to_code = serializers.CharField(max_length=station_code_max_length)
     items = serializers.ListField(child=OrderItemSerializer(), min_length=1)
+    expected_total_price = serializers.DecimalField(max_digits=12, decimal_places=2)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["station_from_code"] == attrs["station_to_code"]:
-            raise ValidationError({"station_to_code": "station_from and station_to must differ."})
+            raise ValidationError(
+                {"station_to_code": _("station_from and station_to must differ.")}
+            )
         return attrs
 
 

@@ -49,9 +49,9 @@ def test_create_duplicate_order(
 ) -> None:
     """Booking already occupied seat was rejected."""
     item = make_order_item(car.number, seat.number, passenger)
-    create_order(departure.uuid, station_a.code, station_b.code, [item])
+    create_order(departure.uuid, station_a.code, station_b.code, [item], Money(300, "USD"))
     with pytest.raises(SeatUnavailableError):
-        create_order(departure.uuid, station_a.code, station_b.code, [item])
+        create_order(departure.uuid, station_a.code, station_b.code, [item], Money(300, "USD"))
 
 
 @pytest.mark.django_db
@@ -68,7 +68,11 @@ def test_create_order_with_duplicated_items(
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(SeatUnavailableError):
         create_order(
-            departure.uuid, station_a.code, station_b.code, [item, item],
+            departure.uuid,
+            station_a.code,
+            station_b.code,
+            [item, item],
+            Money(600, "USD")
         )
 
 
@@ -83,7 +87,7 @@ def test_create_order_unknown_departure_uuid(
 ) -> None:
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(DepartureNotFoundError):
-        create_order(uuid_mod.uuid4(), station_a.code, station_d.code, [item])
+        create_order(uuid_mod.uuid4(), station_a.code, station_d.code, [item], Money(1000, "USD"))
 
 
 @pytest.mark.django_db
@@ -97,9 +101,9 @@ def test_create_order_unknown_station_code(
 ) -> None:
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(InvalidStationCodeError):
-        create_order(departure.uuid, station_a.code, "UNKNOWN", [item])
+        create_order(departure.uuid, station_a.code, "UNKNOWN", [item], Money(1000, "USD"))
     with pytest.raises(InvalidStationCodeError):
-        create_order(departure.uuid, "UNKNOWN", station_a.code, [item])
+        create_order(departure.uuid, "UNKNOWN", station_a.code, [item], Money(1000, "USD"))
 
 
 @pytest.mark.django_db
@@ -115,7 +119,7 @@ def test_create_order_station_not_on_route(
     Station.objects.create(name="Y", code="Y")
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(InvalidStationRangeError):
-        create_order(departure.uuid, "X", "Y", [item])
+        create_order(departure.uuid, "X", "Y", [item], Money(1000, "USD"))
 
 
 @pytest.mark.django_db
@@ -131,7 +135,7 @@ def test_create_order_backward_station_range(
     """Booking from C to A (reverse direction) is rejected."""
     item = make_order_item(car.number, seat.number, passenger)
     with pytest.raises(InvalidStationRangeError):
-        create_order(departure.uuid, station_c.code, station_a.code, [item])
+        create_order(departure.uuid, station_c.code, station_a.code, [item], Money(1000, "USD"))
 
 
 @pytest.mark.django_db
@@ -144,7 +148,7 @@ def test_create_order_unknown_seat(
 ) -> None:
     item = make_order_item(99, 99, passenger)
     with pytest.raises(SeatNotFoundError):
-        create_order(departure.uuid, station_a.code, station_d.code, [item])
+        create_order(departure.uuid, station_a.code, station_d.code, [item], Money(1000, "USD"))
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +167,7 @@ def test_create_order_single_item(
     passenger: Passenger,
 ) -> None:
     item = make_order_item(car.number, seat.number, passenger)
-    order = create_order(departure.uuid, station_a.code, station_d.code, [item])
+    order = create_order(departure.uuid, station_a.code, station_d.code, [item], Money(1000, "USD"))
 
     assert Order.objects.count() == 1
     assert Booking.objects.count() == 1
@@ -187,7 +191,7 @@ def test_create_order_multiple_items(
         make_order_item(car.number, seat.number, passenger),
         make_order_item(car.number, seat2.number, passenger),
     ]
-    order = create_order(departure.uuid, station_a.code, station_d.code, items)
+    order = create_order(departure.uuid, station_a.code, station_d.code, items, Money(2000, "USD"))
 
     assert order.bookings.count() == 2
     assert Passenger.objects.count() == 3
@@ -207,7 +211,7 @@ def test_create_order_partial_route(
 ) -> None:
     """Booking for a sub-segment (A->B) prices only that segment."""
     item = make_order_item(car.number, seat.number, passenger)
-    order = create_order(departure.uuid, station_a.code, station_b.code, [item])
+    order = create_order(departure.uuid, station_a.code, station_b.code, [item], Money(300, "USD"))
     # segment AB base_price=200, + BASE_PRICE=100
     assert order.total_price == Money("300.00", "USD")
 
@@ -230,6 +234,7 @@ def test_create_order_rolls_back_on_conflict(
         station_a.code,
         station_d.code,
         [make_order_item(car.number, seat.number, passenger)],
+        Money(1000, "USD"),
     )
 
     # Now try to book seat2 + seat1(conflict) in one order
@@ -238,7 +243,7 @@ def test_create_order_rolls_back_on_conflict(
         make_order_item(car.number, seat.number, passenger),  # already booked
     ]
     with pytest.raises(SeatUnavailableError):
-        create_order(departure.uuid, station_a.code, station_d.code, items)
+        create_order(departure.uuid, station_a.code, station_d.code, items, Money(2000, "USD"))
 
     # seat2 booking should have been rolled back
     assert Booking.objects.filter(seat=seat2).count() == 0

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from django.test.testcases import TestCase
+from djmoney.money import Money
 
 from apps.bookings.services import create_order
 from apps.core.cache import (
@@ -85,6 +86,7 @@ def test_list_seats_cached_and_invalidated_on_booking(
         station_a.code,
         station_b.code,
         [make_order_item(car.number, seat.number, passenger)],
+        Money(300, "USD"),
     )
     assert DepartureGenerationCache.get(departure.uuid) > gen
     third = list_seats(departure.uuid, station_a.code, station_d.code)

@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
+from djmoney.money import Money
 
 from apps.bookings.exceptions import SeatUnavailableError
 from apps.bookings.services import create_order
@@ -239,8 +240,8 @@ def test_non_overlapping_segments_share_seat(
     passenger: Passenger,
 ) -> None:
     item = make_order_item(car.number, seat.number, passenger)
-    create_order(departure.uuid, station_a.code, station_b.code, [item])
-    create_order(departure.uuid, station_c.code, station_d.code, [item])
+    create_order(departure.uuid, station_a.code, station_b.code, [item], Money(300, "USD"))
+    create_order(departure.uuid, station_c.code, station_d.code, [item], Money(500, "USD"))
 
 
 @pytest.mark.django_db
@@ -256,6 +257,6 @@ def test_overlapping_segments_conflict(
     passenger: Passenger,
 ) -> None:
     item = make_order_item(car.number, seat.number, passenger)
-    create_order(departure.uuid, station_a.code, station_c.code, [item])
+    create_order(departure.uuid, station_a.code, station_c.code, [item], Money(600, "USD"))
     with pytest.raises(SeatUnavailableError):
-        create_order(departure.uuid, station_b.code, station_d.code, [item])
+        create_order(departure.uuid, station_b.code, station_d.code, [item], Money(800, "USD"))

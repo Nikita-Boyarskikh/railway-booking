@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.conf import settings
 from django.core.cache import caches
+from djmoney.money import Money
 from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking, Order, Passenger
@@ -238,6 +239,7 @@ def test_list_seats_query_count_constant_in_bookings(
         station_a.code,
         station_b.code,
         [make_order_item(car.number, seat.number, passenger)],
+        Money(300, "USD"),
     )
 
     _clear_all_caches()
@@ -350,6 +352,7 @@ def test_create_order_query_count_bounded(
             station_a.code,
             station_b.code,
             [make_order_item(car.number, seat.number, passenger)],
+            Money(300, "USD"),
         )
     single_item = len(ctx_single.captured_queries)
 
@@ -365,6 +368,7 @@ def test_create_order_query_count_bounded(
                 make_order_item(car.number, seat.number, passenger),
                 make_order_item(car.number, seat2.number, passenger),
             ],
+            Money(1600, "USD"),
         )
 
 

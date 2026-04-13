@@ -8,7 +8,12 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from djmoney.money import Money
 
-from apps.bookings.exceptions import DepartureNotFoundError, SeatNotFoundError, SeatUnavailableError
+from apps.bookings.exceptions import (
+    DepartureNotFoundError,
+    PriceChangedError,
+    SeatNotFoundError,
+    SeatUnavailableError,
+)
 from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 from apps.core.availability import make_segment_range
 from apps.core.cache import DepartureGenerationCache
@@ -43,6 +48,7 @@ def create_order(
     station_from_code: str,
     station_to_code: str,
     items: list[OrderItemInput],
+    expected_total_price: Money,
 ) -> Order:
     """Create an :class:`Order` with one :class:`Booking` per ``item``.
 
@@ -97,8 +103,9 @@ def create_order(
         resolved.append((item, seat))
         total += calc_booking_price(base_price, subtotal, seat)
 
-    # Total is known up-front, so insert the order with its final price in a
-    # single statement rather than INSERT followed by UPDATE.
+    if expected_total_price != total:
+        raise PriceChangedError(str(total.amount))
+
     order = Order.objects.create(total_price=total)
 
     bookings: list[Booking] = []

@@ -20,7 +20,7 @@ from djmoney.money import Money
 
 from apps.bookings.models import Booking, Order, Passenger
 from apps.core.availability import make_segment_range
-from apps.core.types import OrderItemInput, PassengerDict
+from apps.core.types import OrderDict, OrderItemInput, PassengerDict
 from apps.routes.models import Route, RouteSegment
 from apps.routes.services import resolve_station_range
 from apps.stations.models import Connection, Station
@@ -257,4 +257,20 @@ def create_booking(
         station_to=station_to,
         passenger=passenger,
         segment_range=make_segment_range(from_order, to_order),
+    )
+
+
+def create_order_payload(
+    departure: Departure,
+    station_from: Station,
+    station_to: Station,
+    items: list[OrderItemInput],
+    expected_total_price: int,
+) -> OrderDict:
+    return OrderDict(
+        departure_uuid=str(departure.uuid),
+        station_from_code=station_from.code,
+        station_to_code=station_to.code,
+        items=items,
+        expected_total_price=expected_total_price,
     )

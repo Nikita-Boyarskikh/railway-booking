@@ -75,6 +75,16 @@ class OrderItemInput(TypedDict):
     passenger: PassengerDict
 
 
+class OrderDict(TypedDict):
+    """Payload for ``POST /api/v1/orders``."""
+
+    departure_uuid: str
+    station_from_code: str
+    station_to_code: str
+    items: list[OrderItemInput]
+    expected_total_price: int
+
+
 class StationDict(TypedDict):
     """Station data in the ``list_stations`` response."""
 

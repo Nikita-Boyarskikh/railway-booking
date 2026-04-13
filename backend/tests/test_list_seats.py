@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
+from djmoney.money import Money
 
 from apps.bookings.services import create_order
 from apps.core.types import SeatStatus
@@ -74,6 +75,7 @@ def test_list_seats_status_after_booking(
         station_a.code,
         station_d.code,
         [make_order_item(car.number, seat.number, passenger)],
+        Money(1000, "USD"),
     )
     result = list_seats(departure.uuid, station_a.code, station_d.code)
     seats_out = result["cars"][0]["seats"]

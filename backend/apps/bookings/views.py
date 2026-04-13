@@ -1,11 +1,18 @@
 from typing import TYPE_CHECKING
 
+from django.conf import settings
+from djmoney.money import Money
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.bookings.exceptions import DepartureNotFoundError, SeatNotFoundError, SeatUnavailableError
+from apps.bookings.exceptions import (
+    DepartureNotFoundError,
+    PriceChangedError,
+    SeatNotFoundError,
+    SeatUnavailableError,
+)
 from apps.bookings.models import Order
 from apps.bookings.serializers import CreateOrderSerializer, OrderSerializer
 from apps.bookings.services import create_order
@@ -31,16 +38,15 @@ class OrderCreateView(APIView):
                 station_from_code=data["station_from_code"],
                 station_to_code=data["station_to_code"],
                 items=data["items"],
+                expected_total_price=Money(data["expected_total_price"], settings.DEFAULT_CURRENCY),
             )
-        except SeatUnavailableError as e:
+        except PriceChangedError as e:
             return Response(
-                {
-                    "detail": str(e),
-                    "car_number": e.car_number,
-                    "seat_number": e.seat_number,
-                },
+                {"detail": str(e), "actual_total_price": e.actual_total},
                 status=status.HTTP_409_CONFLICT,
             )
+        except SeatUnavailableError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
         except (
             DepartureNotFoundError,
             InvalidStationCodeError,
@@ -48,9 +54,6 @@ class OrderCreateView(APIView):
             SeatNotFoundError,
         ) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        # create_order populates order._prefetched_objects_cache with bookings
-        # and all their FK relations — no extra query needed.
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 

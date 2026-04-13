@@ -1,13 +1,16 @@
 """HTTP API tests — one test per endpoint/scenario."""
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from django.conf import settings
 from rest_framework.test import APIClient
 
+from tests.conftest import create_order_payload, make_order_item
+
 if TYPE_CHECKING:
+    from apps.bookings.models import Passenger
     from apps.stations.models import Station
     from apps.trains.models import Car, Departure, Seat
 
@@ -100,9 +103,13 @@ def test_departures_search_no_results(
 
 @pytest.mark.django_db
 def test_departures_search_invalid_station_codes(api_client: APIClient, station_a: Station) -> None:
-    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from=UNKNOWN&to={station_a.code}&date=2026-05-01")
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/?from=UNKNOWN&to={station_a.code}&date=2026-05-01"
+    )
     assert r.status_code == 400, r.json()
-    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to=UNKNOWN&date=2026-05-01")
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to=UNKNOWN&date=2026-05-01"
+    )
     assert r.status_code == 400, r.json()
 
 
@@ -119,7 +126,9 @@ def test_departures_search_from_to_same(api_client: APIClient, station_a: Statio
 def test_departures_search_invalid_date(
     api_client: APIClient, station_a: Station, station_b: Station
 ) -> None:
-    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_b.code}&date=invalid")
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/?from={station_a.code}&to={station_b.code}&date=invalid"
+    )
     assert r.status_code == 400, r.json()
 
 
@@ -184,8 +193,6 @@ def test_seats_view_no_results(
     api_client: APIClient,
     station_b: Station,
     station_c: Station,
-    car: Car,
-    seat: Seat,
     departure: Departure,
 ) -> None:
     r = api_client.get(
@@ -217,41 +224,19 @@ def test_seats_view_missing_params(api_client: APIClient, departure: Departure) 
 def test_seats_view_invalid_station_codes(
     api_client: APIClient, departure: Departure, station_a: Station
 ) -> None:
-    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from=UNKNOWN&to={station_a.code}")
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from=UNKNOWN&to={station_a.code}"
+    )
     assert r.status_code == 400, r.json()
-    r2 = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from={station_a.code}&to=UNKNOWN")
+    r2 = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/seats/?from={station_a.code}&to=UNKNOWN"
+    )
     assert r2.status_code == 400, r2.json()
 
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/orders/
 # ---------------------------------------------------------------------------
-
-
-def _order_payload(
-    departure: Departure,
-    station_from: Station,
-    station_to: Station,
-    car: Car,
-    seat: Seat,
-) -> dict[str, Any]:
-    return {
-        "departure_uuid": str(departure.uuid),
-        "station_from_code": station_from.code,
-        "station_to_code": station_to.code,
-        "items": [
-            {
-                "car_number": car.number,
-                "seat_number": seat.number,
-                "passenger": {
-                    "name": "Jane",
-                    "passport_number": "X1",
-                    "gender": "female",
-                    "birth_date": "1985-06-01",
-                },
-            },
-        ],
-    }
 
 
 @pytest.mark.django_db
@@ -263,10 +248,23 @@ def test_order_create(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
     r = api_client.post(
         f"/api/v{settings.API_VERSION}/orders/",
-        _order_payload(departure, station_a, station_d, car, seat),
+        create_order_payload(
+            departure,
+            station_a,
+            station_d,
+            items=[
+                make_order_item(
+                    car_number=car.number,
+                    seat_number=seat.number,
+                    passenger=passenger,
+                ),
+            ],
+            expected_total_price=1000,
+        ),
         format="json",
     )
     assert r.status_code == 201, r.json()
@@ -292,15 +290,24 @@ def test_order_create_conflict_409(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     r2 = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r2.status_code == 409, r2.json()
-    body = r2.json()
-    assert "detail" in body
-    assert body["car_number"] == car.number
-    assert body["seat_number"] == seat.number
 
 
 @pytest.mark.django_db
@@ -342,9 +349,22 @@ def test_order_create_same_station_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
     """Serializer rejects from == to."""
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     payload["station_to_code"] = payload["station_from_code"]
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
@@ -359,9 +379,22 @@ def test_order_create_invalid_gender_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
     """Serializer rejects invalid gender choice."""
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     payload["items"][0]["passenger"]["gender"] = "invalid"
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
@@ -375,8 +408,21 @@ def test_order_create_invalid_station_id_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     payload["station_to_code"] = "UNKNOWN"
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
@@ -390,9 +436,22 @@ def test_order_create_invalid_departure_uuid_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_a, station_d, car, seat)
-    payload["departure_uuid"] = uuid4()
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
+    payload["departure_uuid"] = str(uuid4())
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
@@ -405,8 +464,21 @@ def test_order_create_invalid_station_range_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_d, station_a, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_d,
+        station_a,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
@@ -419,8 +491,21 @@ def test_order_create_invalid_seat_number_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     payload["items"][0]["seat_number"] = 99
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
@@ -434,8 +519,21 @@ def test_order_create_invalid_car_number_400(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
-    payload = _order_payload(departure, station_a, station_d, car, seat)
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
     payload["items"][0]["car_number"] = 99
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
@@ -455,10 +553,23 @@ def test_order_retrieve(
     car: Car,
     seat: Seat,
     departure: Departure,
+    passenger: Passenger,
 ) -> None:
     r = api_client.post(
         f"/api/v{settings.API_VERSION}/orders/",
-        _order_payload(departure, station_a, station_d, car, seat),
+        create_order_payload(
+            departure,
+            station_a,
+            station_d,
+            items=[
+                make_order_item(
+                    car_number=car.number,
+                    seat_number=seat.number,
+                    passenger=passenger,
+                ),
+            ],
+            expected_total_price=1000,
+        ),
         format="json",
     )
     order_uuid = r.json()["uuid"]

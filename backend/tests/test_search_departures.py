@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
+from djmoney.money import Money
 
 from apps.bookings.services import create_order
 from apps.stations.exceptions import InvalidStationCodeError
@@ -125,6 +126,7 @@ def test_search_departures_min_price_none_when_full(
         station_a.code,
         station_d.code,
         [make_order_item(car.number, s.number, passenger) for s in [seat, seat2]],
+        Money(2000, "USD"),
     )
     result = search_departures(station_a.code, station_d.code, departure.date)
     assert result[0]["min_price"] is None
