@@ -24,16 +24,6 @@ if TYPE_CHECKING:
     import datetime
     from uuid import UUID
 
-    from django.db.models import QuerySet
-
-
-def _select_related_for_departure_qs(qs: QuerySet[Departure]) -> QuerySet[Departure]:
-    """Apply the necessary select_related and prefetch_related calls to a Departure queryset."""
-    return qs.select_related("train__route").prefetch_related(
-        "train__route__route_segments__connection",
-        "train__cars__seats",
-    )
-
 
 @SearchCache.wrap
 def search_departures(
@@ -54,14 +44,14 @@ def search_departures(
     # route segment — a single .filter() would require one segment to have
     # both station_from=A and station_to=D (only a direct connection).
     departures = list(
-        _select_related_for_departure_qs(
-            Departure.objects.filter(
-                date=on_date,
-                train__route__route_segments__connection__station_from=from_station,
-            )
-            .filter(train__route__route_segments__connection__station_to=to_station)
-            .distinct()
+        Departure.objects.filter(
+            date=on_date,
+            train__route__route_segments__connection__station_from=from_station,
         )
+        .filter(train__route__route_segments__connection__station_to=to_station)
+        .distinct()
+        .with_route()
+        .with_seats()
     )
     if not departures:
         return []
@@ -116,9 +106,7 @@ def search_departures(
 def list_seats(departure_uuid: UUID | str, from_code: str, to_code: str) -> SeatsResponse:
     """Return seats for ``departure`` grouped by car with per-seat price/status."""
     try:
-        departure = _select_related_for_departure_qs(Departure.objects.all()).get(
-            uuid=departure_uuid
-        )
+        departure = Departure.objects.with_route().with_seats().get(uuid=departure_uuid)
     except Departure.DoesNotExist as e:
         raise DepartureNotFoundError() from e
 

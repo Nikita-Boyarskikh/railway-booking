@@ -95,6 +95,20 @@ class Seat(models.Model):
         return f"{self.car}/seat{self.number}"
 
 
+class DepartureQuerySet(models.QuerySet["Departure"]):
+    """Custom queryset with reusable prefetch chains for Departure."""
+
+    def with_route(self) -> DepartureQuerySet:
+        """Select the train→route chain and prefetch route segments with connections."""
+        return self.select_related("train__route").prefetch_related(
+            "train__route__route_segments__connection",
+        )
+
+    def with_seats(self) -> DepartureQuerySet:
+        """Prefetch cars and seats."""
+        return self.prefetch_related("train__cars__seats")
+
+
 class Departure(models.Model):
     """A specific run of a :class:`Train` on a given date and start time."""
 
@@ -104,6 +118,8 @@ class Departure(models.Model):
     departure_time = models.TimeField()
 
     train_id: int
+
+    objects = DepartureQuerySet.as_manager()
 
     class Meta(TypedModelMeta):
         ordering = ["date", "departure_time"]

@@ -15,7 +15,6 @@ from apps.bookings.exceptions import (
     SeatUnavailableError,
 )
 from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
-from apps.core.availability import make_segment_range
 from apps.core.cache import DepartureGenerationCache
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.routes.services import resolve_station_range
@@ -68,13 +67,7 @@ def create_order(
         SeatUnavailableError: If a requested seat is already booked for the range.
     """
     try:
-        departure = (
-            Departure.objects.select_related("train__route")
-            .prefetch_related(
-                "train__route__route_segments__connection",
-            )
-            .get(uuid=departure_uuid)
-        )
+        departure = Departure.objects.with_route().get(uuid=departure_uuid)
     except (Departure.DoesNotExist, ValidationError) as e:
         raise DepartureNotFoundError() from e
 
@@ -82,7 +75,6 @@ def create_order(
 
     route = departure.train.route
     from_order, to_order = resolve_station_range(route, station_from.pk, station_to.pk)
-    trip_range = make_segment_range(from_order, to_order)
 
     # Subtotal depends only on (route, from_order, to_order), so compute it
     # once for all items instead of repeating the RouteSegment scan per seat.
@@ -119,21 +111,22 @@ def create_order(
         ]
     )
 
-    try:
-        bookings = Booking.objects.bulk_create(
-            [
-                Booking(
-                    order=order,
-                    departure=departure,
-                    seat=seat,
-                    station_from=station_from,
-                    station_to=station_to,
-                    passenger=passenger,
-                    segment_range=trip_range,
-                )
-                for (_item, seat), passenger in zip(resolved, passengers, strict=True)
-            ]
+    booking_objs = [
+        Booking(
+            order=order,
+            departure=departure,
+            seat=seat,
+            station_from=station_from,
+            station_to=station_to,
+            passenger=passenger,
         )
+        for (_item, seat), passenger in zip(resolved, passengers, strict=True)
+    ]
+    for obj in booking_objs:
+        obj.compute_segment_range()
+
+    try:
+        bookings = Booking.objects.bulk_create(booking_objs)
     except IntegrityError as e:
         if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e):  # pragma: no cover
             raise

@@ -7,8 +7,12 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
+from psycopg.types.range import Range
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from django.db.models.base import ModelBase
     from django_stubs_ext.db.models.manager import RelatedManager
 
 BOOKING_NO_OVERLAP_CONSTRAINT = "booking_no_seat_overlap"
@@ -61,11 +65,10 @@ class Booking(models.Model):
     )
     passenger = models.ForeignKey(Passenger, on_delete=models.PROTECT)
     # Half-open range ``[from_order, to_order)`` over the train route's
-    # RouteSegment.order. Set in the service layer from ``(station_from,
-    # station_to)`` on insert; the exclusion constraint below enforces
-    # no-overlap at the database level so the app never needs a separate
-    # seat_is_free check or select_for_update.
-    segment_range = IntegerRangeField()
+    # RouteSegment.order.  Auto-computed from ``(station_from, station_to)``
+    # in :meth:`save` (and :meth:`clean` for admin forms).  The exclusion
+    # constraint below enforces no-overlap at the DB level.
+    segment_range = IntegerRangeField(blank=True)
 
     order_id: int
     departure_id: int
@@ -101,15 +104,29 @@ class Booking(models.Model):
             seat_number=self.seat.number,
         )
 
+    def save(
+        self,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        self.compute_segment_range()
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
+
     def clean(self) -> None:
-        """Cross-field integrity checks."""
-        from apps.core.availability import make_segment_range
+        """Cross-field integrity checks (called by admin forms and full_clean)."""
         from apps.routes.exceptions import InvalidStationRangeError
-        from apps.routes.services import resolve_station_range
 
         errors: dict[str, list[ValidationError]] = {}
 
-        # All FK ids must be set before we can cross-check. Should never happen
+        # All FK ids must be set before we can cross-check.
         if not (
             self.departure_id and self.seat_id and self.station_from_id and self.station_to_id
         ):  # pragma: no cover
@@ -124,13 +141,10 @@ class Booking(models.Model):
                 )
             )
 
-        # 2-4. Both stations must be on the route, in the correct direction.
-        #      Also auto-compute segment_range from the station positions.
-        route = self.departure.train.route
+        # 2. Both stations must be on the route, in the correct direction.
+        #    Also auto-compute segment_range.
         try:
-            from_order, to_order = resolve_station_range(
-                route, self.station_from_id, self.station_to_id
-            )
+            self.compute_segment_range()
         except InvalidStationRangeError:
             errors.setdefault("station_from", []).append(
                 ValidationError(
@@ -138,9 +152,25 @@ class Booking(models.Model):
                     code="invalid_station_range",
                 )
             )
-        else:
-            # 5. Auto-fill segment_range so admin users don't have to.
-            self.segment_range = make_segment_range(from_order, to_order)
 
         if errors:
             raise ValidationError(errors)
+
+    @staticmethod
+    def make_segment_range(from_order: int, to_order: int) -> Range[int]:
+        """Build a half-open ``[from_order, to_order)`` range for segment overlap checks."""
+        return Range(from_order, to_order, bounds="[)")
+
+    def compute_segment_range(self) -> None:
+        """Derive ``segment_range`` from the departure's route and station pair.
+
+        Called automatically by :meth:`save`.  For ``bulk_create`` (which
+        skips ``save``), call this on each instance before passing them.
+        """
+        from apps.routes.services import resolve_station_range
+
+        route = self.departure.train.route
+        from_order, to_order = resolve_station_range(
+            route, self.station_from_id, self.station_to_id
+        )
+        self.segment_range = self.make_segment_range(from_order, to_order)
