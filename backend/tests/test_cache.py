@@ -1,7 +1,9 @@
 """Tests for the Redis-backed cache layer (locmem in the test settings)."""
 
-from datetime import date
+from contextlib import contextmanager
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from django.test.testcases import TestCase
@@ -17,10 +19,13 @@ from apps.core.cache import (
 )
 from apps.core.types import CarDict, DepartureSummary, SeatsResponse
 from apps.stations.models import Station
+from apps.stations.services import list_stations
 from apps.trains.services import list_seats, search_departures
 from tests.conftest import make_order_item
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from apps.bookings.models import Passenger
     from apps.routes.models import Route
     from apps.stations.models import Connection
@@ -133,8 +138,7 @@ def test_search_departures_cached(
 def test_bump_departure_generation_from_zero() -> None:
     """First bump on a fresh key returns 1."""
     assert DepartureGenerationCache.get("brand-new-uuid") == 0
-    result = DepartureGenerationCache.incr("brand-new-uuid")
-    assert result == 1
+    DepartureGenerationCache.incr("brand-new-uuid")
     assert DepartureGenerationCache.get("brand-new-uuid") == 1
 
 
@@ -142,8 +146,7 @@ def test_bump_departure_generation_increments() -> None:
     """Successive bumps increment the counter."""
     DepartureGenerationCache.incr("inc-uuid")
     DepartureGenerationCache.incr("inc-uuid")
-    result = DepartureGenerationCache.incr("inc-uuid")
-    assert result == 3
+    DepartureGenerationCache.incr("inc-uuid")
     assert DepartureGenerationCache.get("inc-uuid") == 3
 
 
@@ -264,3 +267,114 @@ def test_seat_change_bumps_departure_generation(
         seat.seat_type = "vip"
         seat.save()
     assert DepartureGenerationCache.get(departure.uuid) > gen_before
+
+
+# ---------------------------------------------------------------------------
+# Redis unavailability — graceful degradation
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def cache_down() -> Generator[None]:
+    with (
+        patch("django.core.cache.backends.locmem.LocMemCache.get", side_effect=ConnectionError),
+        patch("django.core.cache.backends.locmem.LocMemCache.set", side_effect=ConnectionError),
+    ):
+        yield
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_search_departures_works_when_cache_down(
+    station_a: Station,
+    station_d: Station,
+    seat: Seat,
+    departure: Departure,
+) -> None:
+    """search_departures returns fresh data when Redis is unavailable."""
+    with cache_down():
+        result = search_departures(station_a.code, station_d.code, departure.date)
+    assert len(result) == 1
+    assert result[0]["uuid"] == str(departure.uuid)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_list_seats_works_when_cache_down(
+    station_a: Station,
+    station_d: Station,
+    seat: Seat,
+    departure: Departure,
+) -> None:
+    """list_seats returns fresh data when Redis is unavailable."""
+    with cache_down():
+        result = list_seats(departure.uuid, station_a.code, station_d.code)
+    assert "cars" in result
+    assert len(result["cars"]) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_list_stations_works_when_cache_down(station_a: Station) -> None:
+    """list_stations returns fresh data when Redis is unavailable."""
+    with cache_down():
+        result = list_stations()
+    assert len(result) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_create_order_works_when_cache_down(
+    station_a: Station,
+    station_b: Station,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    passenger: Passenger,
+) -> None:
+    """create_order successfully works when Redis is unavailable."""
+    with cache_down():
+        item = make_order_item(car.number, seat.number, passenger)
+        result = create_order(
+            departure.uuid, station_a.code, station_b.code, [item], Money(300, "USD")
+        )
+    assert result.total_price == Money(300, "USD")
+
+
+@pytest.mark.django_db
+def test_cache_invalidation_does_not_raise_exception_when_cache_down(
+    connection_ab: Connection, station_a: Station, departure: Departure, car: Car, seat: Seat
+) -> None:
+    """"""
+    train = departure.train
+    route = train.route
+    route_segment = route.route_segments.first()
+    assert route_segment
+
+    with (
+        patch("django.core.cache.backends.locmem.LocMemCache.incr", side_effect=ConnectionError),
+        TestCase.captureOnCommitCallbacks(execute=True),
+    ):
+        route.name += "Modified"
+        route.save()
+
+        route_segment.stop_duration += timedelta(minutes=1)
+        route_segment.save()
+
+        connection_ab.distance_km += 1
+        connection_ab.save()
+
+        station_a.name += "Modified"
+        station_a.save()
+
+        departure.date += timedelta(days=1)
+        departure.save()
+
+        train.name += "Modified"
+        train.save()
+
+        car.price_factor += 1
+        car.save()
+
+        seat.price_factor += 1
+        seat.save()

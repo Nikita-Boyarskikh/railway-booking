@@ -1,5 +1,6 @@
 """HTTP API tests — one test per endpoint/scenario."""
 
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -537,6 +538,32 @@ def test_order_create_invalid_car_number_400(
     payload["items"][0]["car_number"] = 99
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_order_create_price_changed_409(
+    api_client: APIClient,
+    station_a: Station,
+    station_d: Station,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    passenger: Passenger,
+) -> None:
+    """When expected_total_price doesn't match the actual price, return 409 with actual price."""
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[make_order_item(car.number, seat.number, passenger)],
+        expected_total_price=999,  # actual is 1000
+    )
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
+    assert r.status_code == 409, r.json()
+    data = r.json()
+    assert "actual_total_price" in data
+    assert Decimal(data["actual_total_price"]) == Decimal("1000.00")
 
 
 # ---------------------------------------------------------------------------

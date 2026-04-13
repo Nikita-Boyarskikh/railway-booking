@@ -164,3 +164,16 @@ def test_search_departures_skips_train_not_on_route(
     # Search B->A (reverse) — our train goes A->D, so it won't match
     result = search_departures(station_b.code, station_a.code, departure.date)
     assert result == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_search_departures_reverse_direction_on_route(
+    station_b: Station,
+    station_c: Station,
+    seat: Seat,
+    departure: Departure,
+) -> None:
+    """C→B is reverse on the A→B→C→D route — should return empty list."""
+    result = search_departures(station_c.code, station_b.code, departure.date)
+    assert result == []

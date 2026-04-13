@@ -15,7 +15,6 @@ individual bit vectors.
 """
 
 import abc
-import contextlib
 import datetime
 import functools
 from typing import TYPE_CHECKING, Final, cast
@@ -57,8 +56,7 @@ class CacheBase[T, **P](abc.ABC):
     @classmethod
     def set(cls, key: str, value: T) -> None:
         """Set the cached value for this call's args."""
-        with contextlib.suppress(ConnectionError):
-            cls.cache.set(key, value, timeout=cls.ttl)
+        cls.cache.set(key, value, timeout=cls.ttl)
 
     @classmethod
     def wrap(cls, func: Callable[P, T]) -> Callable[P, T]:
@@ -66,15 +64,19 @@ class CacheBase[T, **P](abc.ABC):
 
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            key = cls.key(*args, **kwargs)
             try:
+                key = cls.key(*args, **kwargs)
                 hit = cls.cache.get(key, default=cls._MISSING)
             except ConnectionError:
                 hit = cls._MISSING
             if hit is not cls._MISSING:
                 return cast("T", hit)
             value = func(*args, **kwargs)
-            cls.set(key, value)
+            try:
+                key = cls.key(*args, **kwargs)
+                cls.set(key, value)
+            except ConnectionError:
+                pass
             return value
 
         return wrapper
@@ -147,13 +149,13 @@ class DepartureGenerationCache(CacheBase[int, [str | UUID]]):
         return super().get(str(departure_uuid)) or 0
 
     @classmethod
-    def incr(cls, departure_uuid: str | UUID) -> int:
+    def incr(cls, departure_uuid: str | UUID) -> None:
         """Atomically increment the generation counter for a departure, returning the new value."""
         key = cls.key(departure_uuid)
         try:
-            return cls.cache.incr(key)
+            cls.cache.incr(key)
         except ValueError:
             cls.cache.add(key, 0)  # no-op if key already exists
-            return cls.cache.incr(key)
+            cls.cache.incr(key)
         except ConnectionError:
-            return -1
+            pass

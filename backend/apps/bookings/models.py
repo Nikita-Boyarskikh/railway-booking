@@ -109,8 +109,10 @@ class Booking(models.Model):
 
         errors: dict[str, list[ValidationError]] = {}
 
-        # All FK ids must be set before we can cross-check.
-        if not (self.departure_id and self.seat_id and self.station_from_id and self.station_to_id):
+        # All FK ids must be set before we can cross-check. Should never happen
+        if not (
+            self.departure_id and self.seat_id and self.station_from_id and self.station_to_id
+        ):  # pragma: no cover
             return
 
         # 1. Seat must belong to the departure's train.
