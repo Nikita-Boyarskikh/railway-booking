@@ -1,9 +1,10 @@
 import os
+import socket
 from pathlib import Path
 
 import django_stubs_ext
 from corsheaders.defaults import default_headers
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,11 +26,14 @@ if SENTRY_DSN := os.environ.get("SENTRY_DSN", ""):
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
-INTERNAL_IPS = ["127.0.0.1"]
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+
+hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+INTERNAL_IPS = [ip[:-1] + "1" for ip in ips] + ["127.0.0.1"]
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
@@ -55,6 +59,7 @@ INSTALLED_APPS = [
     "constance",
     "djmoney",
     "health_check",
+    *(["debug_toolbar"] if DEBUG else []),
     "django_prometheus",
     "apps.core",
     "apps.stations",
@@ -63,9 +68,6 @@ INSTALLED_APPS = [
     "apps.bookings",
 ]
 
-if DEBUG:
-    INSTALLED_APPS += ["debug_toolbar"]
-
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "apps.core.middleware.RequestIDMiddleware",
@@ -73,6 +75,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    *(["debug_toolbar.middleware.DebugToolbarMiddleware"] if DEBUG else []),
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -81,9 +84,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
-
-if DEBUG:
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 ROOT_URLCONF = "config.urls"
 
@@ -172,8 +172,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
-    "PAGE_SIZE": int(os.environ.get("PAGE_SIZE", "20")),
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {"anon": f"{os.environ.get('THROTTLE_RATE_RPS', '10')}/s"},
 }
@@ -191,7 +189,7 @@ CONSTANCE_ADDITIONAL_FIELDS = {
 CONSTANCE_CONFIG = {
     "BASE_PRICE": (
         os.environ.get("DEFAULT_BASE_PRICE", "0"),
-        _("Fixed amount added to every booking, not multiplied by price factors"),
+        gettext_lazy("Fixed amount added to every booking, not multiplied by price factors"),
         "decimal_field",
     ),
 }
@@ -253,4 +251,8 @@ LOGGING = {
             "handlers": ["console"],
         },
     },
+}
+
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": lambda request: True,
 }

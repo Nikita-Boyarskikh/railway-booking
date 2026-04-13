@@ -23,6 +23,7 @@ class ConnectionAdmin(admin.ModelAdmin[Connection]):
         "station_to__name",
     )
     readonly_fields = ("from_to",)
+    autocomplete_fields = ("station_from", "station_to")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Connection]:
         return super().get_queryset(request).select_related("station_from", "station_to")

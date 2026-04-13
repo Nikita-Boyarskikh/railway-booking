@@ -115,6 +115,7 @@ class RouteSegmentAdmin(admin.ModelAdmin[RouteSegment]):
         "route",
         "order",
     )
+    autocomplete_fields = ("route", "connection")
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

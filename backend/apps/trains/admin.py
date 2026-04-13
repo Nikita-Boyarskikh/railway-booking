@@ -66,6 +66,7 @@ class TrainAdmin(admin.ModelAdmin[Train]):
     search_fields = ("number", "name", "route__name")
     ordering = ("number",)
     readonly_fields = ("number_of_cars",)
+    autocomplete_fields = ("route",)
 
     def number_of_cars(self, obj: Train) -> int:
         return obj.cars.count()
@@ -109,6 +110,7 @@ class CarAdmin(admin.ModelAdmin[Car]):
     ordering = ("train", "number")
     list_filter = ("car_type",)
     readonly_fields = ("number_of_seats",)
+    autocomplete_fields = ("train",)
 
     def number_of_seats(self, obj: Car) -> int:
         return obj.seats.count()
@@ -145,6 +147,7 @@ class DepartureAdmin(admin.ModelAdmin[Departure]):
     search_fields = ("train__number", "train__name")
     ordering = ("date", "departure_time", "train")
     list_filter = ("date",)
+    autocomplete_fields = ("train",)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Departure]:
         return super().get_queryset(request).select_related("train__route")

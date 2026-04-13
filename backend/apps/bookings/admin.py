@@ -9,10 +9,20 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
 
+class BookingInline(admin.TabularInline[Booking, Order]):
+    """Inline editing for :class:`Booking`"""
+
+    model = Booking
+    extra = 1
+    fields = ("order", "departure", "seat", "station_from", "station_to", "passenger")
+    autocomplete_fields = ("order", "departure", "station_from", "station_to", "passenger")
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin[Order]):
     """Admin for :class:`Order`"""
 
+    inlines = (BookingInline,)
     list_display = ("uuid", "created_at", "total_price")
     ordering = ("-created_at",)
     search_fields = ("uuid",)
@@ -46,6 +56,7 @@ class BookingAdmin(admin.ModelAdmin[Booking]):
         "station_to__code",
     )
     ordering = ("-order__created_at", "passenger__name")
+    autocomplete_fields = ("order", "departure", "station_from", "station_to", "passenger")
     date_hierarchy = "departure__date"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Booking]:

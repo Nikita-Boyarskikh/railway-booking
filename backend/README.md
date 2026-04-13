@@ -94,7 +94,6 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 | `GUNICORN_MAX_REQUESTS` | `1000` | Max requests before worker restart |
 | `GUNICORN_MAX_REQUESTS_JITTER` | `100` | Jitter for max requests |
 | **API** | | |
-| `PAGE_SIZE` | `20` | Default pagination page size |
 | `THROTTLE_RATE_RPS` | `10` | Anonymous throttle rate (requests/second) |
 | `DEFAULT_BASE_PRICE` | `0` | Initial constance `BASE_PRICE` value |
 | **Logging** | | |
