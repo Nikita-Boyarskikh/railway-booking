@@ -57,6 +57,63 @@ framework (Redis in compose via `REDIS_URL`, `LocMemCache` in tests):
 
 Signals are wired in `apps/core/apps.py:CoreConfig.ready()`.
 
+## Environment Variables
+
+All env vars have sensible defaults for local development. See `.env.example` for the full list.
+
+| Variable | Default | Description |
+|---|---|---|
+| **Database** | | |
+| `POSTGRES_DB` | `railway` | PostgreSQL database name |
+| `POSTGRES_USER` | `railway` | PostgreSQL user |
+| `POSTGRES_PASSWORD` | `railway` | PostgreSQL password |
+| `POSTGRES_HOST` | `db` | PostgreSQL host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| **Django** | | |
+| `DJANGO_SECRET_KEY` | — | **Required in prod**. Secret key for signing |
+| `DJANGO_DEBUG` | `0` | `1` to enable debug mode + debug toolbar |
+| `DJANGO_ALLOWED_HOSTS` | — | **Required in prod**. Comma-separated allowed hosts |
+| `DJANGO_CORS_ALLOWED_ORIGINS` | derived from hosts | Comma-separated CORS origins |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | derived from hosts | Comma-separated CSRF origins |
+| **Redis / Cache** | | |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis connection URL |
+| `REDIS_TIMEOUT` | `60` | Redis socket timeout (seconds) |
+| `CACHE_TTL_STATIONS` | `86400` (1 day) | Station list cache TTL |
+| `CACHE_TTL_SEARCH` | `30` | Departure search cache TTL |
+| `CACHE_TTL_SEATS` | `30` | Seat listing cache TTL |
+| `CACHE_TTL_STATION_ORDER_MAPS` | `60` | Route station-order maps TTL |
+| `GENERATION_CACHE_TTL` | `604800` (7 days) | Departure generation counter TTL |
+| **DB Pool** | | |
+| `DB_POOL_MIN_SIZE` | `2` | psycopg pool min connections |
+| `DB_POOL_MAX_SIZE` | `10` | psycopg pool max connections |
+| `DB_POOL_MAX_LIFETIME` | `600` | Max connection lifetime (seconds) |
+| **Gunicorn** | | |
+| `GUNICORN_WORKERS` | `nproc*2+1` | Number of worker processes |
+| `GUNICORN_TIMEOUT` | `30` | Worker timeout |
+| `GUNICORN_GRACEFUL_TIMEOUT` | `30` | Graceful shutdown timeout |
+| `GUNICORN_MAX_REQUESTS` | `1000` | Max requests before worker restart |
+| `GUNICORN_MAX_REQUESTS_JITTER` | `100` | Jitter for max requests |
+| **API** | | |
+| `PAGE_SIZE` | `20` | Default pagination page size |
+| `THROTTLE_RATE_RPS` | `10` | Anonymous throttle rate (requests/second) |
+| `DEFAULT_BASE_PRICE` | `0` | Initial constance `BASE_PRICE` value |
+| **Logging** | | |
+| `LOG_LEVEL` | `INFO` (`DEBUG` if `DJANGO_DEBUG=1`) | Log level |
+| `LOG_FORMAT` | `json` (`text` if `DJANGO_DEBUG=1`) | `json` for prod, `text` for dev |
+| **Sentry** | | |
+| `SENTRY_DSN` | `""` (disabled) | Sentry DSN — leave empty to disable |
+| `SENTRY_ENVIRONMENT` | `production` | Sentry environment tag |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` | Performance tracing sample rate |
+| `SENTRY_PROFILES_SAMPLE_RATE` | `0.1` | Profiling sample rate |
+
+## Observability
+
+- **Metrics**: Prometheus endpoint at `GET /metrics` (django-prometheus)
+- **Health**: `GET /health/` checks database + cache connectivity
+- **Logging**: JSON structured logs (request ID, method, path, status, duration) to stdout
+- **Error monitoring**: Sentry (opt-in via `SENTRY_DSN`) with Django/DB/Redis auto-instrumentation
+- **Request tracing**: `X-Request-ID` header propagated through logs and responses
+
 ## Setup (local)
 
 ```bash
@@ -121,6 +178,7 @@ The API uses public identifiers only: stations by `code`, departures and orders 
   "departure_uuid": "9d6e6f8a-…",
   "station_from_code": "MOW",
   "station_to_code": "SOC",
+  "expected_total_price": "1000.00",
   "items": [
     {
       "car_number": 2,
@@ -136,4 +194,9 @@ The API uses public identifiers only: stations by `code`, departures and orders 
 }
 ```
 
-Response: `{uuid, created_at, total_price, features, bookings[]}`. Each booking carries `departure_uuid`, `car_number`, `seat_number`, `station_from_code`, `station_to_code`, and an embedded `passenger`. On a 409 conflict the body is `{detail, car_number, seat_number}`.
+Response: `{uuid, created_at, total_price, features, bookings[]}`. Each booking carries `departure_uuid`, `car_number`, `seat_number`, `station_from_code`, `station_to_code`, and an embedded `passenger`.
+
+Error responses:
+- **409** seat conflict: `{detail}`
+- **409** price changed: `{detail, actual_total_price}` — client should refresh and retry
+- **400** validation: `{detail}`

@@ -9,6 +9,20 @@ from dotenv import load_dotenv
 load_dotenv()
 django_stubs_ext.monkeypatch()
 
+# ---------------------------------------------------------------------------
+# Sentry — error monitoring & performance tracing
+# ---------------------------------------------------------------------------
+if SENTRY_DSN := os.environ.get("SENTRY_DSN", ""):
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        profiles_sample_rate=float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+    )
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
@@ -16,10 +30,14 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
 INTERNAL_IPS = ["127.0.0.1"]
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "DJANGO_CORS_ALLOWED_ORIGINS",
-    "http://localhost:8080",
-).split(",")
+
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+    CORS_ALLOW_ALL_ORIGINS = True
+
+allowed_origins = ",".join(f"http://{host}" for host in ALLOWED_HOSTS)
+CSRF_TRUSTED_ORIGINS = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", allowed_origins).split(",")
+CORS_ALLOWED_ORIGINS = os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", allowed_origins).split(",")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CORS_ALLOW_HEADERS = [*default_headers, "x-request-id"]
@@ -37,6 +55,7 @@ INSTALLED_APPS = [
     "constance",
     "djmoney",
     "health_check",
+    "django_prometheus",
     "apps.core",
     "apps.stations",
     "apps.routes",
@@ -48,6 +67,7 @@ if DEBUG:
     INSTALLED_APPS += ["debug_toolbar"]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "apps.core.middleware.RequestIDMiddleware",
     "apps.core.middleware.RequestLoggingMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -59,6 +79,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 if DEBUG:
@@ -110,7 +131,7 @@ STORAGES = {
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
+        "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0").split(","),
         "TIMEOUT": int(os.environ.get("REDIS_TIMEOUT", "60")),
     },
 }
@@ -176,9 +197,10 @@ CONSTANCE_CONFIG = {
 }
 
 # ---------------------------------------------------------------------------
-# Logging — structured output to stdout for Docker / gunicorn
+# Logging — JSON to stdout for Docker / gunicorn / ELK / CloudWatch
 # ---------------------------------------------------------------------------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "text" if DEBUG else "json")
 
 LOGGING = {
     "version": 1,
@@ -189,15 +211,21 @@ LOGGING = {
         },
     },
     "formatters": {
-        "default": {
+        "text": {
             "format": "%(asctime)s [%(levelname)s] %(name)s [%(request_id)s] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "json": {
+            "class": "pythonjsonlogger.json.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(request_id)s %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S",
+            "rename_fields": {"asctime": "timestamp", "levelname": "level", "name": "logger"},
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "default",
+            "formatter": LOG_FORMAT,
             "filters": ["request_id"],
         },
     },

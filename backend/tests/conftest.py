@@ -62,7 +62,7 @@ def _clear_caches() -> Generator[None]:
 @pytest.fixture
 def base_price() -> Generator[None]:
     """Set ``config.BASE_PRICE`` to 100 for the duration of a test."""
-    with override_config(BASE_PRICE=Decimal(100)):
+    with override_config(BASE_PRICE=Decimal(100)):  # type: ignore[no-untyped-call]
         yield
 
 

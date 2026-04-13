@@ -21,6 +21,7 @@ repos:
           - django-debug-toolbar
           - django-health-check
           - django-money
+          - django-prometheus
           - django-stubs
           - django-stubs-ext
           - djangorestframework
@@ -30,6 +31,8 @@ repos:
           - pytest
           - pytest-django
           - python-dotenv
+          - python-json-logger
           - redis
+          - sentry-sdk
           - types-factory-boy
           - whitenoise

@@ -17,6 +17,7 @@ individual bit vectors.
 import abc
 import datetime
 import functools
+import logging
 from typing import TYPE_CHECKING, Final, cast
 from uuid import UUID
 
@@ -25,6 +26,8 @@ from django.core.cache import BaseCache, cache as default_cache
 
 from apps.core.types import DepartureSummary, SeatsResponse, StationDict
 from apps.routes.models import Route
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -68,6 +71,7 @@ class CacheBase[T, **P](abc.ABC):
                 key = cls.key(*args, **kwargs)
                 hit = cls.cache.get(key, default=cls._MISSING)
             except ConnectionError:
+                logger.warning("Cache read failed for %s, falling back to DB", cls.__name__)
                 hit = cls._MISSING
             if hit is not cls._MISSING:
                 return cast("T", hit)
@@ -76,7 +80,7 @@ class CacheBase[T, **P](abc.ABC):
                 key = cls.key(*args, **kwargs)
                 cls.set(key, value)
             except ConnectionError:
-                pass
+                logger.warning("Cache write failed for %s", cls.__name__)
             return value
 
         return wrapper
@@ -158,4 +162,4 @@ class DepartureGenerationCache(CacheBase[int, [str | UUID]]):
             cls.cache.add(key, 0)  # no-op if key already exists
             cls.cache.incr(key)
         except ConnectionError:
-            pass
+            logger.warning("Cache incr failed for departure=%s", departure_uuid)

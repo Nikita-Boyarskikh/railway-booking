@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
             name='Booking',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('segment_range', django.contrib.postgres.fields.ranges.IntegerRangeField()),
+                ('segment_range', django.contrib.postgres.fields.ranges.IntegerRangeField(blank=True)),
                 ('departure', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='trains.departure')),
                 ('seat', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='trains.seat')),
                 ('station_from', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='bookings_from', to='stations.station')),

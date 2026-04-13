@@ -3,11 +3,21 @@
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
-from health_check.views import HealthCheckView  # type: ignore[import-untyped]
+from health_check.views import HealthCheckView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("health/", HealthCheckView.as_view(), name="health_check"),
+    path("", include("django_prometheus.urls")),
+    path(
+        "health/",
+        HealthCheckView.as_view(
+            checks=[
+                "health_check.Cache",
+                "health_check.Database",
+            ]
+        ),
+        name="health_check",
+    ),
     path(
         f"api/v{settings.API_VERSION}/",
         include(

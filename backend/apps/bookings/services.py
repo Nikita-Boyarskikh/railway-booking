@@ -1,5 +1,6 @@
 """Service layer for the bookings app: order creation and validation."""
 
+import logging
 from typing import TYPE_CHECKING
 
 from constance import config
@@ -16,10 +17,19 @@ from apps.bookings.exceptions import (
 )
 from apps.bookings.models import BOOKING_NO_OVERLAP_CONSTRAINT, Booking, Order, Passenger
 from apps.core.cache import DepartureGenerationCache
+from apps.core.metrics import (
+    bookings_created,
+    order_conflict,
+    order_price_changed,
+    order_total_price,
+    orders_created,
+)
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure, Seat, Train
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import uuid as uuid_mod
@@ -95,6 +105,13 @@ def create_order(
         total += calc_booking_price(base_price, subtotal, seat)
 
     if expected_total_price != total:
+        logger.warning(
+            "Price mismatch: expected=%s actual=%s departure=%s",
+            expected_total_price,
+            total,
+            departure_uuid,
+        )
+        order_price_changed.inc()
         raise PriceChangedError(str(total.amount))
 
     order = Order.objects.create(total_price=total)
@@ -130,6 +147,8 @@ def create_order(
     except IntegrityError as e:
         if BOOKING_NO_OVERLAP_CONSTRAINT not in str(e):  # pragma: no cover
             raise
+        logger.info("Seat conflict on departure=%s", departure_uuid)
+        order_conflict.inc()
         raise SeatUnavailableError() from e
 
     # Populate the prefetch cache so OrderSerializer can access
@@ -140,6 +159,17 @@ def create_order(
     bookings_qs = Booking.objects.filter(order=order)
     bookings_qs._result_cache = list(bookings)
     order._prefetched_objects_cache = {"bookings": bookings_qs}  # type: ignore[attr-defined]
+
+    logger.info(
+        "Order created: uuid=%s departure=%s seats=%d total=%s",
+        order.uuid,
+        departure_uuid,
+        len(bookings),
+        total,
+    )
+    orders_created.inc()
+    bookings_created.inc(len(bookings))
+    order_total_price.observe(float(total.amount))
 
     transaction.on_commit(lambda: DepartureGenerationCache.incr(departure.uuid))
 

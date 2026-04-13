@@ -19,7 +19,7 @@ from apps.trains.models import Car, CarType, Departure, Seat, SeatType, Train
 fake = Faker()
 
 
-class StationFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class StationFactory(DjangoModelFactory[Station]):
     class Meta:
         model = Station
 
@@ -27,7 +27,7 @@ class StationFactory(DjangoModelFactory):  # type: ignore[type-arg]
     code = factory.Sequence(lambda n: f"S{n:03d}")
 
 
-class ConnectionFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class ConnectionFactory(DjangoModelFactory[Connection]):
     class Meta:
         model = Connection
 
@@ -40,7 +40,7 @@ class ConnectionFactory(DjangoModelFactory):  # type: ignore[type-arg]
         return Money(fake.pydecimal(left_digits=8, right_digits=2), "USD")
 
 
-class RouteFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class RouteFactory(DjangoModelFactory[Route]):
     class Meta:
         model = Route
 
@@ -48,7 +48,7 @@ class RouteFactory(DjangoModelFactory):  # type: ignore[type-arg]
     price_factor = factory.Faker("pydecimal", positive=True, left_digits=3, right_digits=3)
 
 
-class RouteSegmentFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class RouteSegmentFactory(DjangoModelFactory[RouteSegment]):
     class Meta:
         model = RouteSegment
 
@@ -58,7 +58,7 @@ class RouteSegmentFactory(DjangoModelFactory):  # type: ignore[type-arg]
     stop_duration = factory.Faker("time_delta")
 
 
-class TrainFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class TrainFactory(DjangoModelFactory[Train]):
     class Meta:
         model = Train
 
@@ -69,7 +69,7 @@ class TrainFactory(DjangoModelFactory):  # type: ignore[type-arg]
     price_factor = factory.Faker("pydecimal", positive=True, left_digits=3, right_digits=3)
 
 
-class CarFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class CarFactory(DjangoModelFactory[Car]):
     class Meta:
         model = Car
 
@@ -79,7 +79,7 @@ class CarFactory(DjangoModelFactory):  # type: ignore[type-arg]
     price_factor = factory.Faker("pydecimal", positive=True, left_digits=3, right_digits=3)
 
 
-class SeatFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class SeatFactory(DjangoModelFactory[Seat]):
     class Meta:
         model = Seat
 
@@ -89,7 +89,7 @@ class SeatFactory(DjangoModelFactory):  # type: ignore[type-arg]
     price_factor = factory.Faker("pydecimal", positive=True, left_digits=3, right_digits=3)
 
 
-class DepartureFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class DepartureFactory(DjangoModelFactory[Departure]):
     class Meta:
         model = Departure
 
@@ -98,7 +98,7 @@ class DepartureFactory(DjangoModelFactory):  # type: ignore[type-arg]
     departure_time = factory.Faker("time_object")
 
 
-class PassengerFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class PassengerFactory(DjangoModelFactory[Passenger]):
     class Meta:
         model = Passenger
 
@@ -111,12 +111,12 @@ class PassengerFactory(DjangoModelFactory):  # type: ignore[type-arg]
         return fake.name_female() if self.gender == "female" else fake.name_male()
 
 
-class OrderFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class OrderFactory(DjangoModelFactory[Order]):
     class Meta:
         model = Order
 
 
-class BookingFactory(DjangoModelFactory):  # type: ignore[type-arg]
+class BookingFactory(DjangoModelFactory[Booking]):
     class Meta:
         model = Booking
 

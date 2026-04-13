@@ -4,6 +4,7 @@ Covers departure search and seat listing. Keeps all business logic out of
 views and serializers so it can be tested and reused.
 """
 
+import logging
 from typing import TYPE_CHECKING
 
 from constance import config
@@ -13,12 +14,15 @@ from djmoney.money import Money
 from apps.bookings.exceptions import DepartureNotFoundError
 from apps.core.availability import batch_occupied_seat_ids_with_subtotal, free_seat_ids
 from apps.core.cache import SearchCache, SeatsCache
+from apps.core.metrics import search_departures_results
 from apps.core.pricing import calc_booking_price, calc_segment_range_subtotal
 from apps.core.timetable import compute_timetable
 from apps.core.types import CarDict, DepartureSummary, SeatDict, SeatsResponse, SeatStatus
 from apps.routes.services import resolve_station_range
 from apps.stations.services import resolve_station_codes
 from apps.trains.models import Departure
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import datetime
@@ -99,6 +103,14 @@ def search_departures(
                 "min_price": str(min_price) if min_price is not None else None,
             }
         )
+    logger.info(
+        "search_departures: %s→%s on %s found %d departures",
+        from_code,
+        to_code,
+        on_date,
+        len(results),
+    )
+    search_departures_results.observe(len(results))
     return results
 
 
