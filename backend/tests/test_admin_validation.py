@@ -1,5 +1,6 @@
 """Tests for admin-level model validation: RouteSegmentFormSet and Booking.clean()."""
 
+import datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -7,6 +8,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory
+from django.utils import timezone
 
 from apps.bookings.models import Booking, Passenger
 from apps.routes.admin import RouteSegmentFormSet, RouteSegmentInline
@@ -549,3 +551,82 @@ def test_inline_allows_all_for_new_route(
     assert segment_inline.has_add_permission(request, None) is True
     assert segment_inline.has_change_permission(request, None) is True
     assert segment_inline.has_delete_permission(request, None) is True
+
+
+# ===========================================================================
+# Passenger validators — passport_number, birth_date
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "bad_passport",
+    ["", "abc", "ABC/123", "12@3456"],
+    ids=["empty", "too_short", "slash", "at_sign"],
+)
+def test_passenger_passport_number_invalid(bad_passport: str) -> None:
+    """Passport numbers with disallowed characters or below min length are rejected."""
+    passenger = Passenger(
+        name="John",
+        passport_number=bad_passport,
+        gender="male",
+        birth_date=datetime.date(1990, 1, 1),
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        passenger.full_clean()
+    assert "passport_number" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "ok_passport",
+    ["1234", "AB-123456", "ABC 12 34", "PP1234567890"],
+    ids=["digits_only", "dash", "spaces", "mixed"],
+)
+def test_passenger_passport_number_valid(ok_passport: str) -> None:
+    """Well-formed passport numbers pass validation."""
+    Passenger(
+        name="John",
+        passport_number=ok_passport,
+        gender="male",
+        birth_date=datetime.date(1990, 1, 1),
+    ).full_clean()
+
+
+@pytest.mark.django_db
+def test_passenger_birth_date_today_rejected() -> None:
+    """Birth date equal to today is rejected — must be strictly in the past."""
+    passenger = Passenger(
+        name="John",
+        passport_number="1234567890",
+        gender="male",
+        birth_date=timezone.localdate(),
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        passenger.full_clean()
+    assert "birth_date" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+def test_passenger_birth_date_future_rejected() -> None:
+    """Birth date in the future is rejected."""
+    passenger = Passenger(
+        name="John",
+        passport_number="1234567890",
+        gender="male",
+        birth_date=timezone.localdate() + datetime.timedelta(days=1),
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        passenger.full_clean()
+    assert "birth_date" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+def test_passenger_birth_date_past_accepted() -> None:
+    """A birth date strictly in the past passes validation."""
+    Passenger(
+        name="John",
+        passport_number="1234567890",
+        gender="male",
+        birth_date=timezone.localdate() - datetime.timedelta(days=1),
+    ).full_clean()

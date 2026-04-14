@@ -42,6 +42,9 @@ allowed_origins = ",".join(f"http://{host}" for host in ALLOWED_HOSTS)
 CSRF_TRUSTED_ORIGINS = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", allowed_origins).split(",")
 CORS_ALLOWED_ORIGINS = os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", allowed_origins).split(",")
 
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CORS_ALLOW_HEADERS = [*default_headers, "x-request-id"]
 CSRF_COOKIE_SECURE = not DEBUG
@@ -260,6 +263,12 @@ LOGGING = {
         },
     },
 }
+
+SILENCED_SYSTEM_CHECKS = [
+    "security.W004",
+    "security.W008",
+    "security.W009",
+]
 
 DEBUG_TOOLBAR_CONFIG = {
     "SHOW_TOOLBAR_CALLBACK": lambda request: True,

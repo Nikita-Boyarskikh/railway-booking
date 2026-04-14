@@ -4,18 +4,27 @@ from typing import TYPE_CHECKING
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import IntegerRangeField, RangeOperators
 from django.core.exceptions import ValidationError
+from django.core.validators import MinLengthValidator, RegexValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 from psycopg.types.range import Range
 
 if TYPE_CHECKING:
+    import datetime
     from collections.abc import Iterable
 
     from django.db.models.base import ModelBase
     from django_stubs_ext.db.models.manager import RelatedManager
 
 BOOKING_NO_OVERLAP_CONSTRAINT = "booking_no_seat_overlap"
+
+
+def validate_past_date(value: datetime.date) -> None:
+    """Reject birth dates that are today or in the future."""
+    if value >= timezone.localdate():
+        raise ValidationError(_("Birth date must be in the past."), code="birth_date_not_past")
 
 
 class Gender(models.TextChoices):
@@ -29,9 +38,19 @@ class Passenger(models.Model):
     """A person travelling on one booking (name, passport, gender, DOB)."""
 
     name = models.CharField(max_length=255)
-    passport_number = models.CharField(max_length=64)
+    passport_number = models.CharField(
+        max_length=64,
+        validators=[
+            MinLengthValidator(4),
+            RegexValidator(
+                regex=r"^[A-Za-z0-9 -]+$",
+                message=_("Passport number may only contain letters, digits, spaces, and dashes."),
+                code="passport_number_invalid",
+            ),
+        ],
+    )
     gender = models.CharField(max_length=8, choices=Gender.choices)
-    birth_date = models.DateField()
+    birth_date = models.DateField(validators=[validate_past_date])
 
     def __str__(self) -> str:
         return self.name

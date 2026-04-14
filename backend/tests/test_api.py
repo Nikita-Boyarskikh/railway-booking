@@ -1,7 +1,8 @@
 """HTTP API tests — one test per endpoint/scenario."""
 
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 import pytest
@@ -449,6 +450,48 @@ def test_order_create_invalid_gender_400(
         expected_total_price=1000,
     )
     payload["items"][0]["passenger"]["gender"] = "invalid"
+    r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
+    assert r.status_code == 400, r.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("passport_number", "abc"),
+        ("passport_number", "ABC/123"),
+        ("birth_date", (date.today() + timedelta(days=1)).isoformat()),
+        ("birth_date", date.today().isoformat()),
+    ],
+    ids=["passport_too_short", "passport_bad_chars", "birth_date_future", "birth_date_today"],
+)
+def test_order_create_invalid_passenger_400(
+    api_client: APIClient,
+    station_a: Station,
+    station_d: Station,
+    car: Car,
+    seat: Seat,
+    departure: Departure,
+    passenger: Passenger,
+    field: Literal["passport_number", "birth_date"],
+    value: str,
+) -> None:
+    """Passenger validators (passport_number format, birth_date in the past) propagate to the API."""
+    payload = create_order_payload(
+        departure,
+        station_a,
+        station_d,
+        items=[
+            make_order_item(
+                car_number=car.number,
+                seat_number=seat.number,
+                passenger=passenger,
+            ),
+        ],
+        expected_total_price=1000,
+    )
+    payload["items"][0]["passenger"][field] = value
     r = api_client.post(f"/api/v{settings.API_VERSION}/orders/", payload, format="json")
     assert r.status_code == 400, r.json()
 
