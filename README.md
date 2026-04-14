@@ -6,7 +6,6 @@ See [AGENTS.md](AGENTS.md) for the full specification, [backend/README.md](backe
 ## Quick start
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 

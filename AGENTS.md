@@ -248,11 +248,11 @@ The HTTP API never exposes internal integer primary keys. Public identifiers are
 ## Tech Stack
 
 - **Backend**: Python 3.14, Django 6.0, Django REST Framework, Gunicorn, uv (dependency management)
-- **Frontend**: TypeScript, React 19, Vite, Tailwind CSS 4, React Router, Bun (package manager & runtime)
+- **Frontend**: TypeScript, React 19, Vite 8, Tailwind CSS 4, React Router 7 (data mode), Bun (package manager & runtime); `ky` + `zod` for the HTTP layer, `react-hook-form` + `@hookform/resolvers/zod` for forms, `@headlessui/react` combobox, `react-i18next` (en/ru), `@sentry/react` (opt-in via `VITE_SENTRY_DSN`)
 - **Database**: PostgreSQL 18
 - **Cache**: Redis 8 (Django's built-in `RedisCache` backend)
 - **Infrastructure**: Docker Compose, Nginx
-- **Code quality**: ruff (PEP8), pytest, ESLint (Airbnb style)
+- **Code quality**: ruff (PEP8), pytest, ESLint (Airbnb style), strict TypeScript
 - **Language**: English (code, docs, API)
 
 ## Project Structure
@@ -264,6 +264,7 @@ railway-booking/
 ├── AGENTS.md
 ├── backend/
 │   ├── Dockerfile
+│   ├── .env.example
 │   ├── pyproject.toml          # uv managed dependencies
 │   ├── manage.py
 │   ├── config/              # settings, urls, wsgi
@@ -277,11 +278,18 @@ railway-booking/
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf
+│   ├── .env.example
 │   ├── src/
-│   │   ├── api/             # API client functions
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # SearchPage, SeatsPage, ConfirmationPage
-│   │   └── types/           # TypeScript interfaces
+│   │   ├── api/             # ky-based ApiClient, zod schemas, errors, stations cache
+│   │   ├── components/      # Props-only view components
+│   │   ├── hooks/           # Logic hooks (useSearch, useSeatsForm, useSeatPricing, useOrderSubmit, useSeatsPage, useToggleSet)
+│   │   ├── pages/           # *.page.tsx; each exports the page + its route loader
+│   │   ├── i18n/            # i18next init + locales/{en,ru}.json
+│   │   ├── utils/           # format, seat, validation
+│   │   ├── config.ts        # Env-driven constants
+│   │   ├── sentry.ts        # Sentry init (no-op without DSN)
+│   │   ├── routes.tsx       # createBrowserRouter with lazy routes + RouteErrorBoundary
+│   │   └── main.tsx         # RouterProvider wrapped in Sentry.ErrorBoundary
 │   └── ...
 └── .env
 ```
@@ -291,7 +299,9 @@ railway-booking/
 - **Service layer**: business logic (pricing, availability checks) lives in `services.py` within each app, not in views or serializers
 - **Caching**: response-level cache in `apps/core/cache.py` — stations list (`stations:all`, signal-invalidated), `search_departures` (TTL 30 s), and `list_seats` (keyed by a per-departure generation counter bumped in `transaction.on_commit` from `create_order`). Design doc: `docs/PERF_PLAN.md`
 - **Timetable computation**: utility in `core` app that takes a Departure and returns `[{station, arrival_time, departure_time}, ...]`
-- **No state management library**: React local state + URL params, data fetched per page
+- **Frontend state model**: no global store. URL params (`useSearchParams`) are source of truth for search; React Router 7 loaders own server data per route; React Hook Form + zod schemas own form state; a module-level TTL cache in `api/cache.ts` dedupes the shared stations list across loaders
+- **Frontend error boundary**: route loader errors go into a `RouteErrorBoundary` (404 Response → `NotFoundPage`, everything else → `ErrorPage`); top-level `Sentry.ErrorBoundary` catches render errors
+- **Frontend validation**: zod schemas in `api/schemas.ts` validate every API response at the client boundary (`SchemaError` on mismatch); the same `PassengerSchema` is reused by React Hook Form via `zodResolver` for client-side form validation; server 400 responses are mapped to RHF field paths by `utils/validation.ts`
 - **Nginx**: single container (frontend) serves built React static files and proxies `/api/` to the backend (gunicorn)
 - **Migrations + seed data**: `migrate` + `loaddata` run on backend container startup with demo fixtures (stations, segments, routes, trains, cars, seats, and departures)
 - **Environment variables**: `.env` file for DB credentials, SECRET_KEY, etc.

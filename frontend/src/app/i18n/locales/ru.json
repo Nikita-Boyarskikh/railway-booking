@@ -1,0 +1,95 @@
+{
+  "app": {
+    "title": "Железнодорожные билеты"
+  },
+  "a11y": {
+    "skipToContent": "Перейти к содержимому",
+    "loading": "Загрузка",
+    "languageSwitcher": "Язык интерфейса",
+    "searchForm": "Поиск поезда",
+    "searchResults": "Результаты поиска",
+    "bookingSummary": "Детали бронирования",
+    "carSeats": "Места в вагоне {{number}}",
+    "selectSeat": "Выбрать место {{seat}} в вагоне {{car}}"
+  },
+  "common": {
+    "from": "Откуда",
+    "to": "Куда",
+    "backToSearch": "К поиску",
+    "requestFailed": "Ошибка запроса"
+  },
+  "search": {
+    "title": "Поиск поезда",
+    "pageTitle": "Поиск поезда · Железнодорожные билеты",
+    "placeholderFrom": "Откуда",
+    "placeholderTo": "Куда",
+    "labelFrom": "Станция отправления",
+    "labelTo": "Станция назначения",
+    "labelDate": "Дата поездки",
+    "swap": "Поменять",
+    "swapAria": "Поменять местами «Откуда» и «Куда»",
+    "searching": "Ищем…",
+    "noResults": "Отправлений не найдено.",
+    "columns": {
+      "train": "Поезд",
+      "departure": "Отправление",
+      "arrival": "Прибытие",
+      "freeSeats": "Свободно мест",
+      "from": "От"
+    },
+    "select": "Выбрать"
+  },
+  "seats": {
+    "title": "Выбор мест",
+    "pageTitle": "Выбор мест · Железнодорожные билеты",
+    "from": "Откуда: ",
+    "to": "Куда: ",
+    "carHeader": "Вагон {{number}} ",
+    "carMeta": "({{type}}, свободно {{free}})",
+    "columns": {
+      "seat": "Место",
+      "type": "Тип",
+      "status": "Статус",
+      "price": "Цена"
+    },
+    "statusFree": "свободно",
+    "statusOccupied": "занято",
+    "passengerDetails": "Данные пассажиров",
+    "seatHeader": "Вагон {{car}} · Место {{seat}} — {{price}}",
+    "fullName": "ФИО",
+    "passportNumber": "Номер паспорта",
+    "gender": "Пол",
+    "birthDate": "Дата рождения",
+    "genderMale": "Мужской",
+    "genderFemale": "Женский",
+    "total": "Итого: {{total}}",
+    "book": "Забронировать",
+    "booking": "Бронируем…",
+    "seatConflict": "Место уже занято. Список мест обновлён.",
+    "submitFailed": "Не удалось создать заказ.",
+    "openStations": "Открыть список станций"
+  },
+  "confirmation": {
+    "title": "Бронирование подтверждено",
+    "pageTitle": "Бронирование подтверждено · Железнодорожные билеты",
+    "orderSummary": "Заказ {{uuid}} — Итого: ",
+    "bookAnother": "Новая поездка",
+    "columns": {
+      "car": "Вагон",
+      "seat": "Место",
+      "from": "Откуда",
+      "to": "Куда",
+      "passenger": "Пассажир",
+      "passport": "Паспорт"
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "pageTitle": "Не найдено · Железнодорожные билеты",
+    "message": "Такой страницы не существует."
+  },
+  "error": {
+    "header": "Ошибка",
+    "fallback": "Что-то пошло не так."
+  }
+}

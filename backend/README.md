@@ -28,6 +28,7 @@ backend/
 ├── tests/               # pytest suite
 ├── entrypoint.sh        # migrate + loaddata + collectstatic + gunicorn
 ├── pyproject.toml       # deps + ruff + pytest config
+├── .env.example         # Env vars with defaults & purpose
 └── Dockerfile
 ```
 
@@ -119,7 +120,7 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 ```bash
 cd backend
 uv sync                       # install deps (incl. dev group)
-cp ../.env.example ../.env    # configure DB credentials
+cp .env.example .env          # edit if you need custom values
 uv run python manage.py migrate
 uv run python manage.py createsuperuser
 uv run python manage.py collectstatic
@@ -131,22 +132,23 @@ API: http://localhost:8000/api/v1/ — admin: http://localhost:8000/admin/
 
 ## Common commands
 
-| Task                 | Command                                               |
-|----------------------|-------------------------------------------------------|
-| Run dev server       | `uv run python manage.py runserver`                   |
-| Make migrations      | `uv run python manage.py makemigrations`              |
-| Apply migrations     | `uv run python manage.py migrate`                     |
-| Load demo fixtures   | `uv run python manage.py loaddata fixtures/demo.json` |
-| Create superuser     | `uv run python manage.py createsuperuser`             |
-| Collect admin static | `uv run python manage.py collectstatic`               |
-| Django shell         | `uv run python manage.py shell`                       |
-| Run tests            | `uv run pytest`                                       |
-| Run tests (verbose)  | `uv run pytest -v`                                    |
-| Single test          | `uv run pytest tests/test_api.py::test_name`          |
-| Lint                 | `uv run ruff check .`                                 |
-| Lint + autofix       | `uv run ruff check --fix .`                           |
-| Format               | `uv run ruff format .`                                |
-| Type check           | `uv run mypy .`                                       |
+| Task                      | Command                                                  |
+|---------------------------|----------------------------------------------------------|
+| Run dev server            | `uv run python manage.py runserver`                      |
+| Make migrations           | `uv run python manage.py makemigrations`                 |
+| Apply migrations          | `uv run python manage.py migrate`                        |
+| Load demo fixtures        | `uv run python manage.py loaddata fixtures/demo.json`    |
+| Create superuser          | `uv run python manage.py createsuperuser`                |
+| Collect admin static      | `uv run python manage.py collectstatic`                  |
+| Django shell              | `uv run python manage.py shell`                          |
+| Run tests                 | `uv run pytest`                                          |
+| Run tests (verbose)       | `uv run pytest -v`                                       |
+| Single test               | `uv run pytest tests/test_api.py::test_name`             |
+| Lint                      | `uv run ruff check .`                                    |
+| Lint + autofix            | `uv run ruff check --fix .`                              |
+| Format                    | `uv run ruff format .`                                   |
+| Type check                | `uv run mypy .`                                          |
+| OpenAPI schema generation | `python manage.py spectacular --color --file schema.yml` |
 
 ## Docker
 

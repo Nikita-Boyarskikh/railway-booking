@@ -1,0 +1,95 @@
+{
+  "app": {
+    "title": "Railway Booking"
+  },
+  "a11y": {
+    "skipToContent": "Skip to main content",
+    "loading": "Loading",
+    "languageSwitcher": "Language",
+    "searchForm": "Train search",
+    "searchResults": "Search results",
+    "bookingSummary": "Booking summary",
+    "carSeats": "Seats in car {{number}}",
+    "selectSeat": "Select seat {{seat}} in car {{car}}"
+  },
+  "common": {
+    "from": "From",
+    "to": "To",
+    "backToSearch": "Back to search",
+    "requestFailed": "Request failed"
+  },
+  "search": {
+    "title": "Find a train",
+    "pageTitle": "Find a train · Railway Booking",
+    "placeholderFrom": "From",
+    "placeholderTo": "To",
+    "labelFrom": "Departure station",
+    "labelTo": "Destination station",
+    "labelDate": "Travel date",
+    "swap": "Swap",
+    "swapAria": "Swap from and to",
+    "searching": "Searching…",
+    "noResults": "No departures found.",
+    "columns": {
+      "train": "Train",
+      "departure": "Departure",
+      "arrival": "Arrival",
+      "freeSeats": "Free seats",
+      "from": "From"
+    },
+    "select": "Select"
+  },
+  "seats": {
+    "title": "Select seats",
+    "pageTitle": "Select seats · Railway Booking",
+    "from": "From: ",
+    "to": "To: ",
+    "carHeader": "Car {{number}} ",
+    "carMeta": "({{type}}, {{free}} free)",
+    "columns": {
+      "seat": "Seat",
+      "type": "Type",
+      "status": "Status",
+      "price": "Price"
+    },
+    "statusFree": "free",
+    "statusOccupied": "occupied",
+    "passengerDetails": "Passenger details",
+    "seatHeader": "Car {{car}} · Seat {{seat}} — {{price}}",
+    "fullName": "Full name",
+    "passportNumber": "Passport number",
+    "gender": "Gender",
+    "birthDate": "Birth date",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "total": "Total: {{total}}",
+    "book": "Book",
+    "booking": "Booking…",
+    "seatConflict": "Seat no longer available. Seats have been refreshed.",
+    "submitFailed": "Failed to create order.",
+    "openStations": "Open stations list"
+  },
+  "confirmation": {
+    "title": "Booking confirmed",
+    "pageTitle": "Booking confirmed · Railway Booking",
+    "orderSummary": "Order {{uuid}} — Total: ",
+    "bookAnother": "Book another trip",
+    "columns": {
+      "car": "Car",
+      "seat": "Seat",
+      "from": "From",
+      "to": "To",
+      "passenger": "Passenger",
+      "passport": "Passport"
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "pageTitle": "Not found · Railway Booking",
+    "message": "The page you're looking for doesn't exist."
+  },
+  "error": {
+    "header": "Error",
+    "fallback": "Something went wrong."
+  }
+}
