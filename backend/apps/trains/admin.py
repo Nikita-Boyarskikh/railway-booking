@@ -54,7 +54,7 @@ def _bulk_create_seats(car: Car, n: int) -> None:
         return
     existing = set(car.seats.values_list("number", flat=True))
     if new_seats := [Seat(car=car, number=i) for i in range(1, n + 1) if i not in existing]:
-        Seat.objects.bulk_create(new_seats, ignore_conflicts=True)
+        Seat.objects.bulk_create(new_seats)
 
 
 @admin.register(Train)
@@ -69,7 +69,7 @@ class TrainAdmin(admin.ModelAdmin[Train]):
     autocomplete_fields = ("route",)
 
     def number_of_cars(self, obj: Train) -> int:
-        return obj.cars.count()
+        return len(obj.cars.all())
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Train]:
         return super().get_queryset(request).select_related("route").prefetch_related("cars")

@@ -21,12 +21,26 @@ class RouteSegmentFormSet(BaseInlineFormSet[RouteSegment, Route, ModelForm[Route
 
         # Collect non-deleted forms with data.
         segments: list[tuple[int, int, int]] = []
+        station_from_ids, station_to_ids = set(), set()
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get("DELETE"):
                 connection = form.cleaned_data.get("connection")
                 order = form.cleaned_data.get("order")
-                if connection is not None and order is not None:
-                    segments.append((order, connection.station_from_id, connection.station_to_id))
+                if connection is None or order is None:
+                    continue
+
+                # Check no segments with the same station_from or station_to exists
+                if (
+                    connection.station_from_id in station_from_ids
+                    or connection.station_to_id in station_to_ids
+                ):
+                    raise ValidationError(
+                        _("Route should not contain segments with the same from or to station.")
+                    )
+
+                station_from_ids.add(connection.station_from_id)
+                station_to_ids.add(connection.station_to_id)
+                segments.append((order, connection.station_from_id, connection.station_to_id))
 
         if not segments:
             raise ValidationError(_("Route should not be empty."))
@@ -40,8 +54,8 @@ class RouteSegmentFormSet(BaseInlineFormSet[RouteSegment, Route, ModelForm[Route
             raise ValidationError(
                 _(
                     "Segment orders must be sequential starting from 0 "
-                    f"(expected {expected_orders}, got {actual_orders})."
-                )
+                    "(expected {expected_orders}, got {actual_orders})."
+                ).format(expected_orders=expected_orders, actual_orders=actual_orders)
             )
 
         # Check chain continuity: each segment's station_from must match

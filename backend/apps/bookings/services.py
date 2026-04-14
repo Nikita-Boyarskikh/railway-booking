@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from constance import config
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from djmoney.money import Money
 
@@ -78,7 +77,7 @@ def create_order(
     """
     try:
         departure = Departure.objects.with_route().get(uuid=departure_uuid)
-    except (Departure.DoesNotExist, ValidationError) as e:
+    except Departure.DoesNotExist as e:
         raise DepartureNotFoundError() from e
 
     station_from, station_to = resolve_station_codes(station_from_code, station_to_code)
@@ -105,7 +104,7 @@ def create_order(
         total += calc_booking_price(base_price, subtotal, seat)
 
     if expected_total_price != total:
-        logger.warning(
+        logger.info(
             "Price mismatch: expected=%s actual=%s departure=%s",
             expected_total_price,
             total,

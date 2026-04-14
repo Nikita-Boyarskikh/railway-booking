@@ -1,4 +1,5 @@
 from config.settings import *  # noqa: F403
+from config.settings import REST_FRAMEWORK
 
 ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
@@ -16,3 +17,10 @@ CACHES = {
     },
 }
 CONSTANCE_DATABASE_CACHE_BACKEND = None
+
+REST_FRAMEWORK.update(
+    {
+        "DEFAULT_THROTTLE_CLASSES": [],
+        "DEFAULT_THROTTLE_RATES": {},
+    }
+)

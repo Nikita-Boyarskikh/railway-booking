@@ -37,7 +37,7 @@ class RequestIDMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        request_id = request.headers.get(X_REQUEST_ID_HEADER) or uuid.uuid4().hex
+        request_id = request.headers.get(X_REQUEST_ID_HEADER, "")[:36] or uuid.uuid4().hex
         request.request_id = request_id  # type: ignore[attr-defined]
 
         # Store on the thread-local so the logging filter can read it.

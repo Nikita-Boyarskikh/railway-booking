@@ -33,7 +33,6 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
 INTERNAL_IPS = [ip[:-1] + "1" for ip in ips] + ["127.0.0.1"]
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
@@ -45,6 +44,8 @@ CORS_ALLOWED_ORIGINS = os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", allowed_ori
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CORS_ALLOW_HEADERS = [*default_headers, "x-request-id"]
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -121,6 +122,7 @@ DATABASES = {
         },
     }
 }
+CONN_MAX_AGE = int(os.environ.get("CONN_MAX_AGE", "600"))
 
 STORAGES = {
     "staticfiles": {
@@ -172,8 +174,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"anon": f"{os.environ.get('THROTTLE_RATE_RPS', '10')}/s"},
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": f"{os.environ.get('THROTTLE_RATE_RPS', '10')}/s",
+        "booking": f"{os.environ.get('BOOKING_THROTTLE_RATE_RPS', '1')}/s",
+    },
 }
 
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]

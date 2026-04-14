@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 class OrderCreateView(APIView):
     """``POST /api/v1/orders/`` — create an order with one or more bookings."""
 
+    throttle_scope = "booking"
+
     def post(self, request: Request) -> Response:
         """Create an order. Returns 201 on success, 409 on seat conflict, 400 on bad input."""
         serializer = CreateOrderSerializer(data=request.data)

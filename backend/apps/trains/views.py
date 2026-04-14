@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -32,6 +34,7 @@ class DepartureSearchView(APIView):
 class DepartureSeatsView(APIView):
     """``GET /api/v1/departures/{uuid}/seats/`` — seats grouped by car with price/status."""
 
+    @method_decorator(ensure_csrf_cookie)
     def get(self, request: Request, uuid: str) -> Response:
         """Return seats for ``uuid`` restricted to the requested segment range."""
         query = SeatsQuerySerializer(data=request.query_params)

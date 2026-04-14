@@ -27,8 +27,8 @@ def _on_connection_change(sender: type[Connection], instance: Connection, **kwar
             StationOrderMapsCache.invalidate(route_segment.route)
 
 
-@receiver([post_save, post_delete], sender=Route)
-def _on_route_change(sender: type[Route], instance: Route, **kwargs: Any) -> None:
+@receiver(post_delete, sender=Route)
+def _on_route_delete(sender: type[Route], instance: Route, **kwargs: Any) -> None:
     @transaction.on_commit
     def clear_caches() -> None:
         StationOrderMapsCache.invalidate(instance)

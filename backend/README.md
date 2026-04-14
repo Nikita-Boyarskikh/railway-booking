@@ -69,6 +69,7 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 | `POSTGRES_PASSWORD` | `railway` | PostgreSQL password |
 | `POSTGRES_HOST` | `db` | PostgreSQL host |
 | `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| `CONN_MAX_AGE` | `600` | Maximum lifetime of a connection |
 | **Django** | | |
 | `DJANGO_SECRET_KEY` | — | **Required in prod**. Secret key for signing |
 | `DJANGO_DEBUG` | `0` | `1` to enable debug mode + debug toolbar |
@@ -95,6 +96,7 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 | `GUNICORN_MAX_REQUESTS_JITTER` | `100` | Jitter for max requests |
 | **API** | | |
 | `THROTTLE_RATE_RPS` | `10` | Anonymous throttle rate (requests/second) |
+| `BOOKING_THROTTLE_RATE_RPS` | `1` | Booking throttle rate (requests/second) |
 | `DEFAULT_BASE_PRICE` | `0` | Initial constance `BASE_PRICE` value |
 | **Logging** | | |
 | `LOG_LEVEL` | `INFO` (`DEBUG` if `DJANGO_DEBUG=1`) | Log level |

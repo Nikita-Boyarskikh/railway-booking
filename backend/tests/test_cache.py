@@ -193,12 +193,11 @@ def test_connection_change_invalidates_station_order_maps(
 
 
 @pytest.mark.django_db
-def test_route_change_invalidates_station_order_maps(route: Route) -> None:
-    """Saving a Route invalidates its StationOrderMapsCache entry."""
+def test_route_delete_invalidates_station_order_maps(route: Route) -> None:
+    """Deleting a Route invalidates its StationOrderMapsCache entry."""
     StationOrderMapsCache.set(StationOrderMapsCache.key(route), _SOM_SENTINEL)
     with TestCase.captureOnCommitCallbacks(execute=True):
-        route.name = "Modified"
-        route.save()
+        route.delete()
     assert StationOrderMapsCache.get(route) is None
 
 
