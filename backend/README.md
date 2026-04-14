@@ -118,7 +118,8 @@ All env vars have sensible defaults for local development. See `../.env.example`
 
 ```bash
 cd backend
-uv sync                       # install deps (incl. dev group)
+uv sync  # install deps (incl. dev group)
+export POSTGRES_PORT=... POSTGRES_PORT=...  # export env variables for db
 uv run python manage.py migrate
 uv run python manage.py createsuperuser
 uv run python manage.py collectstatic
@@ -126,7 +127,12 @@ uv run python manage.py loaddata fixtures/demo.json
 uv run python manage.py runserver
 ```
 
-API: http://localhost:8000/api/v1/ — admin: http://localhost:8000/admin/
+- API: http://localhost:8000/api/v1/
+- Admin: http://localhost:8000/admin/
+- Prometheus metrics: http://localhost:8000/metrics/
+- Health check: http://localhost:8000/health/
+- SwaggerUI Schema: http://localhost:8080/api/schema/
+- SwaggerUI API Doc: http://localhost:8080/api/schema/swagger-ui/
 
 ## Common commands
 
@@ -198,6 +204,7 @@ The API uses public identifiers only: stations by `code`, departures and orders 
 Response: `{uuid, created_at, total_price, features, bookings[]}`. Each booking carries `departure_uuid`, `car_number`, `seat_number`, `station_from_code`, `station_to_code`, and an embedded `passenger`.
 
 Error responses:
+- **499** too many requests
 - **409** seat conflict: `{detail}`
 - **409** price changed: `{detail, actual_total_price}` — client should refresh and retry
 - **400** validation: `{detail}`

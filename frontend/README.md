@@ -79,14 +79,8 @@ All public vars are prefixed `VITE_` and inlined at build time. See `../.env.exa
 
 ```bash
 cd frontend
+nvm use
 bun install
-bun run dev
-```
-
-Under `nvm` (project-pinned):
-
-```bash
-cd frontend && source ~/.nvm/nvm.sh && nvm use && bun run dev
 ```
 
 ## Common commands

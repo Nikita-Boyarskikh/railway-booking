@@ -88,8 +88,10 @@ The API exposes public identifiers only — stations by `code`, departures and o
 ## Tests
 
 ```bash
-docker compose exec backend uv run pytest
-docker compose exec frontend bun test
+docker compose exec backend pytest
+cd frontend
+nvm use
+bun test
 ```
 
 ## Linters
