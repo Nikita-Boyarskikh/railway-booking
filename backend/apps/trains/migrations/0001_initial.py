@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'ordering': ['date', 'departure_time'],
-                'indexes': [models.Index(fields=['date', 'train'], name='trains_depa_date_cc6fd2_idx')],
+                'constraints': [models.UniqueConstraint(fields=('date', 'train'), name='departure_date_train_uniq')],
             },
         ),
         migrations.AddConstraint(

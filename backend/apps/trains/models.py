@@ -123,10 +123,10 @@ class Departure(models.Model):
 
     class Meta(TypedModelMeta):
         ordering = ["date", "departure_time"]
-        indexes = [
+        constraints = [
             # search_departures filters by date; composite with train_id speeds
             # the join onto train/route during the same query.
-            models.Index(fields=["date", "train"]),
+            models.UniqueConstraint(fields=["date", "train"], name="departure_date_train_uniq"),
         ]
 
     def __str__(self) -> str:

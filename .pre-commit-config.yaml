@@ -26,6 +26,7 @@ repos:
           - django-stubs-ext
           - djangorestframework
           - djangorestframework-stubs
+          - drf-spectacular
           - factory-boy
           - psycopg
           - pytest

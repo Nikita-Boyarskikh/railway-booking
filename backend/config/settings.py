@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "constance",
     "djmoney",
     "health_check",
@@ -125,7 +126,6 @@ DATABASES = {
         },
     }
 }
-CONN_MAX_AGE = int(os.environ.get("CONN_MAX_AGE", "600"))
 
 STORAGES = {
     "staticfiles": {
@@ -185,6 +185,7 @@ REST_FRAMEWORK = {
         "anon": f"{os.environ.get('THROTTLE_RATE_RPS', '10')}/s",
         "booking": f"{os.environ.get('BOOKING_THROTTLE_RATE_RPS', '1')}/s",
     },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 FIXTURE_DIRS = [BASE_DIR / "fixtures"]
@@ -271,5 +272,14 @@ SILENCED_SYSTEM_CHECKS = [
 ]
 
 DEBUG_TOOLBAR_CONFIG = {
-    "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+    "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG,
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Your Project API",
+    "DESCRIPTION": "Your project description",
+    "VERSION": None,
+    "SERVERS": [{"url": origin} for origin in CORS_ALLOWED_ORIGINS],
+    "SCHEMA_PATH_PREFIX": "/api/v[0-9]",
+    "SERVE_INCLUDE_SCHEMA": False,
 }

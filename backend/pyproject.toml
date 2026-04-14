@@ -12,6 +12,7 @@ dependencies = [
     "django-prometheus>=2.4.0",
     "django-stubs-ext>=6.0.2",
     "djangorestframework>=3.15",
+    "drf-spectacular[swagger]>=0.29.0",
     "gunicorn>=23.0",
     "psycopg[c,pool]>=3.2",
     "python-dotenv>=1.0",

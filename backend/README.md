@@ -69,7 +69,6 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 | `POSTGRES_PASSWORD` | `railway` | PostgreSQL password |
 | `POSTGRES_HOST` | `db` | PostgreSQL host |
 | `POSTGRES_PORT` | `5432` | PostgreSQL port |
-| `CONN_MAX_AGE` | `600` | Maximum lifetime of a connection |
 | **Django** | | |
 | `DJANGO_SECRET_KEY` | — | **Required in prod**. Secret key for signing |
 | `DJANGO_DEBUG` | `0` | `1` to enable debug mode + debug toolbar |
