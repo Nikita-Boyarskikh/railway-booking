@@ -40,7 +40,6 @@ frontend/
 │   ├── routes.tsx            # createBrowserRouter with lazy routes + RouteErrorBoundary
 │   ├── main.tsx              # Entry: RouterProvider wrapped in Sentry.ErrorBoundary
 │   └── index.css             # Tailwind entry
-├── .env.example              # Env vars with defaults & purpose
 ├── .husky/                   # git hooks
 ├── eslint.config.js          # Strict type-checked flat config
 ├── vite.config.ts            # Vite + Vitest config
@@ -64,7 +63,7 @@ Loader errors route into `routes.tsx:RouteErrorBoundary`, which renders `NotFoun
 
 ## Environment variables
 
-All public vars are prefixed `VITE_` and inlined at build time. See `.env.example` for defaults.
+All public vars are prefixed `VITE_` and inlined at build time. See `../.env.example` for defaults.
 
 | Var | Default | Purpose |
 |---|---|---|
@@ -81,7 +80,6 @@ All public vars are prefixed `VITE_` and inlined at build time. See `.env.exampl
 ```bash
 cd frontend
 bun install
-cp .env.example .env   # edit if you need custom values
 bun run dev
 ```
 

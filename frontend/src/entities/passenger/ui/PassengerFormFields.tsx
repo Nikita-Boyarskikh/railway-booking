@@ -62,7 +62,7 @@ export default function PassengerFormFields({
           <input
             id={ids.passport}
             {...form.register(`items.${index}.passenger.passport_number`)}
-            pattern="^[A-Za-z0-9 -]+$"
+            pattern="^[A-Za-z0-9 \-]+$"
             minLength={4}
             maxLength={64}
             aria-invalid={Boolean(itemErrors?.passport_number)}

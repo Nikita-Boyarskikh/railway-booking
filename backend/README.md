@@ -28,7 +28,6 @@ backend/
 ├── tests/               # pytest suite
 ├── entrypoint.sh        # migrate + loaddata + collectstatic + gunicorn
 ├── pyproject.toml       # deps + ruff + pytest config
-├── .env.example         # Env vars with defaults & purpose
 └── Dockerfile
 ```
 
@@ -60,7 +59,7 @@ Signals are wired in `apps/core/apps.py:CoreConfig.ready()`.
 
 ## Environment Variables
 
-All env vars have sensible defaults for local development. See `.env.example` for the full list.
+All env vars have sensible defaults for local development. See `../.env.example` for the full list.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -120,7 +119,6 @@ All env vars have sensible defaults for local development. See `.env.example` fo
 ```bash
 cd backend
 uv sync                       # install deps (incl. dev group)
-cp .env.example .env          # edit if you need custom values
 uv run python manage.py migrate
 uv run python manage.py createsuperuser
 uv run python manage.py collectstatic

@@ -6,14 +6,20 @@ See [AGENTS.md](AGENTS.md) for the full specification, [backend/README.md](backe
 ## Quick start
 
 ```bash
-docker compose up --build
+cp .env.example .env  # Edit defaults if you need
+cd backend; uv run python manage.py collectstatic; cd -
+docker compose up --build -d
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py loaddata demo
+docker compose exec backend python manage.py createsuperuser
 ```
 
 - Frontend: http://localhost:8080
 - API: http://localhost:8080/api/v1/
-
-The backend container automatically runs migrations and loads demo fixtures
-(stations, segments, routes, trains, cars, seats, and departures).
+- Admin: http://localhost:8080/admin/
+- Health check: http://localhost:8080/health/
+- SwaggerUI API Doc: http://localhost:8080/api/schema/swagger-ui
+- Prometeus metrics: http://localhost:8080/metrics/
 
 ## Development (hot reload)
 
@@ -25,6 +31,9 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --watch
 
 - **Backend** — source mounted into the container, gunicorn runs with `--reload`, so Python changes restart workers automatically.
 - **Frontend** — Vite dev server replaces the nginx prod build; source is mounted, HMR is enabled, served at http://localhost:8080.
+
+The backend container automatically runs migrations, collects staticfiles and loads demo fixtures
+(stations, segments, routes, trains, cars, seats, and departures).
 
 The dev override is opt-in: plain `docker compose up --build` still produces the production-style image (nginx + built bundle).
 
@@ -43,7 +52,18 @@ Copied from `.env.example` into `.env` and consumed by `docker-compose.yml`.
 | `DJANGO_DEBUG` | `0`                | backend | `1` enables Django debug mode |
 | `DJANGO_ALLOWED_HOSTS` | `*`                | backend | Comma-separated `ALLOWED_HOSTS` |
 
-The frontend build needs no env vars; the dev override sets `VITE_API_PROXY=http://backend:8000` for the Vite dev server.
+The frontend build needs no env vars by default; all `VITE_*` keys below have sane fallbacks. Set them via `frontend/.env` for local dev or via build args/container env in prod. See `frontend/.env.example` for the full list.
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_API_BASE_URL` | `/api/v1` | Backend prefix; override if the frontend is served from a different origin than the API |
+| `VITE_DEFAULT_API_TIMEOUT_MS` | `10000` | Per-request timeout (ms) for the `ky` client |
+| `VITE_STATIONS_CACHE_MS` | `300000` | In-memory TTL for the stations list shared across loaders |
+| `VITE_DEFAULT_LOCALE` | `en` | UI fallback locale; supported: `en`, `ru` |
+| `VITE_SENTRY_DSN` | _empty_ | Enables Sentry error reporting when set |
+| `VITE_SENTRY_ENVIRONMENT` | Vite `MODE` | Sentry environment tag (e.g. `production`, `staging`) |
+| `VITE_SENTRY_SAMPLE_TRACE` | `0.1` | Sentry performance sample rate (0.0–1.0) |
+| `VITE_API_PROXY` | `http://localhost:8000` | Dev-only: backend origin for the Vite dev server proxy (set to `http://backend:8000` in the docker dev override) |
 
 ## Frontend pages
 

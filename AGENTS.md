@@ -264,7 +264,6 @@ railway-booking/
 ├── AGENTS.md
 ├── backend/
 │   ├── Dockerfile
-│   ├── .env.example
 │   ├── pyproject.toml          # uv managed dependencies
 │   ├── manage.py
 │   ├── config/              # settings, urls, wsgi
@@ -278,7 +277,6 @@ railway-booking/
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf
-│   ├── .env.example
 │   ├── src/
 │   │   ├── api/             # ky-based ApiClient, zod schemas, errors, stations cache
 │   │   ├── components/      # Props-only view components
@@ -291,6 +289,7 @@ railway-booking/
 │   │   ├── routes.tsx       # createBrowserRouter with lazy routes + RouteErrorBoundary
 │   │   └── main.tsx         # RouterProvider wrapped in Sentry.ErrorBoundary
 │   └── ...
+├── .env.example
 └── .env
 ```
 
