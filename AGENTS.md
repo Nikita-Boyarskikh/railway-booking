@@ -212,6 +212,7 @@ The HTTP API never exposes internal integer primary keys. Public identifiers are
 ### 2. View Seats
 
 - User clicks "Select" on a departure
+- `GET /api/v1/departures/{uuid}/?from={code}&to={code}` — one departure summary, same shape as a single row of the search endpoint, except of free seat count and minimum price. Used to hydrate the seats page when opened via direct link
 - `GET /api/v1/departures/{uuid}/seats/?from={code}&to={code}`
 - Response: seats grouped by car. Each car has `number`, `car_type`, `features`, `seats[]`. Each seat has `number`, `seat_type`, `status` (free/occupied), `price`
 - User selects one or more seats
@@ -301,6 +302,7 @@ railway-booking/
 |--------|------|-------------|
 | GET | `/api/v1/stations/` | List all stations (`[{name, code}]`) |
 | GET | `/api/v1/departures/?from={code}&to={code}&date=` | Search departures |
+| GET | `/api/v1/departures/{uuid}/?from={code}&to={code}` | One departure summary |
 | GET | `/api/v1/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car |
 | POST | `/api/v1/orders/` | Create order with bookings |
 | GET | `/api/v1/orders/{uuid}/` | Retrieve an order |

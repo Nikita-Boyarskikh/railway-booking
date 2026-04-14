@@ -22,14 +22,19 @@ class TimetableStop(TypedDict):
     departure_time: str | None
 
 
-class DepartureSummary(TypedDict):
-    """Single departure row from ``search_departures``."""
+class DepartureDict(TypedDict):
+    """Departure dictionary returned by ``get_departure``."""
 
     uuid: str
     train_number: str
     train_name: str
     departure_time: str | None
     arrival_time: str | None
+
+
+class DepartureSummary(DepartureDict):
+    """Single departure row from ``search_departures``."""
+
     free_seat_count: int
     min_price: str | None
 

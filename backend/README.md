@@ -168,6 +168,7 @@ The API uses public identifiers only: stations by `code`, departures and orders 
 |---|---|---|
 | GET | `/api/v1/stations/` | List stations as `[{name, code}]` |
 | GET | `/api/v1/departures/?from={code}&to={code}&date={YYYY-MM-DD}` | Search departures (returns `uuid`, train info, times, free count, min price) |
+| GET | `/api/v1/departures/{uuid}/?from={code}&to={code}` | One departure summary (same shape as a single search row; used for direct-link seat page loads) |
 | GET | `/api/v1/departures/{uuid}/seats/?from={code}&to={code}` | Seats grouped by car (`number`, `car_type`, `seats[]` with `number`, `seat_type`, `status`, `price`) |
 | POST | `/api/v1/orders/` | Create order (see payload below) |
 | GET | `/api/v1/orders/{uuid}/` | Retrieve an order by uuid |

@@ -30,7 +30,7 @@ class DepartureSearchQuerySerializer(serializers.Serializer[Departure]):
 
 
 class SeatsQuerySerializer(serializers.Serializer[Seat]):
-    """Query-string validator for the seat-listing endpoint."""
+    """Query-string validator for the seat-listing and departure-detail endpoints."""
 
     from_code = serializers.CharField()
     to_code = serializers.CharField()

@@ -236,6 +236,58 @@ def test_seats_view_invalid_station_codes(
 
 
 # ---------------------------------------------------------------------------
+# GET /api/v1/departures/{uuid}/?from=&to=
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("base_price")
+def test_departure_detail(
+    api_client: APIClient,
+    station_a: Station,
+    station_d: Station,
+    seat: Seat,
+    seat2: Seat,
+    departure: Departure,
+) -> None:
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/?from={station_a.code}&to={station_d.code}"
+    )
+    assert r.status_code == 200, r.json()
+    body = r.json()
+    assert body["uuid"] == str(departure.uuid)
+    assert body["train_number"] == departure.train.number
+
+
+@pytest.mark.django_db
+def test_departure_detail_not_found(
+    api_client: APIClient,
+    station_a: Station,
+    station_d: Station,
+) -> None:
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/{uuid4()}/?from={station_a.code}&to={station_d.code}"
+    )
+    assert r.status_code == 404, r.json()
+
+
+@pytest.mark.django_db
+def test_departure_detail_missing_params(api_client: APIClient, departure: Departure) -> None:
+    r = api_client.get(f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/")
+    assert r.status_code == 400, r.json()
+
+
+@pytest.mark.django_db
+def test_departure_detail_invalid_station_codes(
+    api_client: APIClient, departure: Departure, station_a: Station
+) -> None:
+    r = api_client.get(
+        f"/api/v{settings.API_VERSION}/departures/{departure.uuid}/?from=UNKNOWN&to={station_a.code}"
+    )
+    assert r.status_code == 400, r.json()
+
+
+# ---------------------------------------------------------------------------
 # POST /api/v1/orders/
 # ---------------------------------------------------------------------------
 
